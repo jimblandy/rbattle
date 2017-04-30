@@ -77,7 +77,7 @@ pub trait VisibleGraph: Graph {
     /// Determine which boundary line a mouse click on the point `(x, y)` refers
     /// to. If it refers to a boundary line between two nodes, return them.
     /// Otherwise, return `None`.
-    fn boundary_hit(&self, Point) -> Option<(Node, Node)>;
+    fn boundary_hit(&self, &Point) -> Option<(Node, Node)>;
 }
 
 /// A line segment from the boundary of a node's area.

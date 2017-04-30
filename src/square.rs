@@ -174,7 +174,7 @@ impl VisibleGraph for SquareGrid {
     /// are squares, centered on the point in question. We let the squares
     /// overlap a bit, leaving rectangles around each boundary line segment to
     /// treat as hits.
-    fn boundary_hit(&self, point: Point) -> Option<(Node, Node)> {
+    fn boundary_hit(&self, point: &Point) -> Option<(Node, Node)> {
         // Exclude points further than this from the side of a node, or nearer
         // than this to a square corner.
         const TOLERANCE: f32 = 0.2;
