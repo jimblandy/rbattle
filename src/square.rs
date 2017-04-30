@@ -176,8 +176,19 @@ impl VisibleGraph for SquareGrid {
     /// treat as hits.
     fn boundary_hit(&self, point: &Point) -> Option<(Node, Node)> {
         // Exclude points further than this from the side of a node, or nearer
-        // than this to a square corner.
+        // than this to a square corner. Clearly, this must be less than 0.5, to
+        // avoid ambiguity.
         const TOLERANCE: f32 = 0.2;
+
+        // Exclude points outside the grid altogether, or on the outer edges.
+        // This lets us assume that every hit we find is an interior boundary,
+        // with another node on the other side.
+        let (max_x, max_y) = self.bounds();
+        if point.0 < TOLERANCE || point.0 > max_x - TOLERANCE ||
+            point.1 < TOLERANCE || point.1 > max_y - TOLERANCE
+        {
+            return None;
+        }
 
         // Return `true` if `val` is no further than `distance` from the nearest integer.
         fn near(val: f32, distance: f32) -> bool {
@@ -189,35 +200,25 @@ impl VisibleGraph for SquareGrid {
             return None;
         }
 
-        // Recognize points near vertical edges. This test suffices because
-        // we've already excluded corners.
+        // Recognize points near vertical edges. We know these points cannot
+        // also be near horizontal edges, since we've already excluded corners.
         if near(point.0, TOLERANCE) {
+            // Both the round and floor here produce positive numbers, given the
+            // exclusions above.
             let col = point.0.round() as usize;
             let row = point.1.floor() as usize;
 
-            // Boundary lines on the left and right edges are not boundaries
-            // between two nodes.
-            if col == 0 || col == self.cols {
-                return None;
-            }
-
-            return Some((self.rc_node(col, row),
-                         self.rc_node(col - 1, row)));
+            return Some((self.rc_node(row, col),
+                         self.rc_node(row, col - 1)));
         }
 
-        // Recognize points near horizontal edges. Similarly.
+        // Recognize points near horizontal edges. As above, just transposed.
         if near(point.1, TOLERANCE) {
             let col = point.0.floor() as usize;
-            let row = point.0.round() as usize;
+            let row = point.1.round() as usize;
 
-            // Boundary lines on the bottom and top edges are not boundaries
-            // between two nodes.
-            if row == 0 || row == self.rows {
-                return None;
-            }
-
-            return Some((self.rc_node(col, row),
-                         self.rc_node(col, row - 1)));
+            return Some((self.rc_node(row, col),
+                         self.rc_node(row - 1, col)));
         }
 
         None
@@ -307,5 +308,62 @@ mod square_grid_as_visible_graph {
                  swp((2.0, 1.0), (2.0, 2.0), None),
                  swp((2.0, 2.0), (1.0, 2.0), Some(5)),
                  swp((1.0, 2.0), (1.0, 1.0), Some(2))]);
+    }
+
+    #[test]
+    fn boundary_hit() {
+        // These tests are not black-box: they know the general algorithm
+        // `boundary_hit` implements, and the value of TOLERANCE. But they
+        // should mostly be okay with any reasonable hit definition.
+
+        use graph::Node;
+        use super::SquareGrid;
+
+        // Make a result from `boundary_hit` easier to compare by putting the
+        // nodes in increasing order, if there are any. Terse name because
+        // it's local, and we're using it in lots of tests.
+        fn s(opt: Option<(Node, Node)>) -> Option<(Node, Node)> {
+            opt.map(|(a, b)| if a > b { (b, a) } else { (a, b) })
+        }
+
+        let grid = SquareGrid::new(3, 4);
+
+        // Wild.
+        assert_eq!(grid.boundary_hit(&(-100.0, -100.0)), None);
+        assert_eq!(grid.boundary_hit(&(-100.0, 1.5)),    None);
+        assert_eq!(grid.boundary_hit(&(-100.0, 2000.0)), None);
+
+        assert_eq!(grid.boundary_hit(&(2.0, -100.0)),    None);
+        assert_eq!(grid.boundary_hit(&(2.0, 2000.0)),    None);
+
+        assert_eq!(grid.boundary_hit(&(2000.0, -100.0)), None);
+        assert_eq!(grid.boundary_hit(&(2000.0, 1.5)),    None);
+        assert_eq!(grid.boundary_hit(&(2000.0, 2000.0)), None);
+
+        // Nearby outside.
+        assert_eq!(grid.boundary_hit(&(2.0, -0.5)), None);
+        assert_eq!(grid.boundary_hit(&(4.5,  1.5)), None);
+        assert_eq!(grid.boundary_hit(&(2.0,  3.5)), None);
+        assert_eq!(grid.boundary_hit(&(-0.5, 1.5)), None);
+
+        // On corners.
+        assert_eq!(grid.boundary_hit(&(0.0, 0.0)), None);
+        assert_eq!(grid.boundary_hit(&(4.0, 0.0)), None);
+        assert_eq!(grid.boundary_hit(&(4.0, 3.0)), None);
+        assert_eq!(grid.boundary_hit(&(0.0, 3.0)), None);
+
+        // On sides.
+        assert_eq!(grid.boundary_hit(&(3.5, 0.0)), None);
+        assert_eq!(grid.boundary_hit(&(4.0, 2.3)), None);
+        assert_eq!(grid.boundary_hit(&(1.7, 3.0)), None);
+        assert_eq!(grid.boundary_hit(&(0.0, 1.2)), None);
+
+        // Interior horizontal.
+        assert_eq!(s(grid.boundary_hit(&(0.5, 1.1))), Some((0, 4)));
+        assert_eq!(s(grid.boundary_hit(&(3.6, 1.9))), Some((7, 11)));
+
+        // Interior vertical.
+        assert_eq!(s(grid.boundary_hit(&(2.1, 1.3))), Some((5, 6)));
+        assert_eq!(s(grid.boundary_hit(&(3.0, 2.7))), Some((10, 11)));
     }
 }
