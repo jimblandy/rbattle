@@ -328,7 +328,7 @@ mod square_grid_as_visible_graph {
 
         let grid = SquareGrid::new(3, 4);
 
-        // Wild.
+        // Wildly outside the grid.
         assert_eq!(grid.boundary_hit(&(-100.0, -100.0)), None);
         assert_eq!(grid.boundary_hit(&(-100.0, 1.5)),    None);
         assert_eq!(grid.boundary_hit(&(-100.0, 2000.0)), None);
@@ -365,5 +365,9 @@ mod square_grid_as_visible_graph {
         // Interior vertical.
         assert_eq!(s(grid.boundary_hit(&(2.1, 1.3))), Some((5, 6)));
         assert_eq!(s(grid.boundary_hit(&(3.0, 2.7))), Some((10, 11)));
+
+        // Inside the grid but not close to any boundary line.
+        assert_eq!(s(grid.boundary_hit(&(2.4, 1.6))), None);
+        assert_eq!(s(grid.boundary_hit(&(1.3, 0.7))), None);
     }
 }
