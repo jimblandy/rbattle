@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["Jim Blandy <jimb@red-bean.com>"]
 
 [dependencies]
+glium = "0.16.0"

@@ -1,4 +1,5 @@
-use graph::{Graph, Node};
+use graph::Node;
+use visible_graph::VisibleGraph;
 use map::Map;
 use std::rc::Rc;
 
@@ -6,11 +7,11 @@ use std::rc::Rc;
 pub struct Player(usize);
 
 /// The complete state of an RBattle game board.
-pub struct State<G: Graph> {
+pub struct State<G: VisibleGraph> {
     /// The map being played on.
     map: Rc<Map<G>>,
 
-    /// The state of each node on the map.
+    /// The state of each node on the map. Indexed by node number.
     nodes: Vec<NodeState>
 }
 

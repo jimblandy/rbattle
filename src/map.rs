@@ -1,13 +1,14 @@
-use graph::{Graph, Node};
+use graph::Node;
+use visible_graph::VisibleGraph;
 
 /// A map on which an RBattle game is played.
 ///
 /// A `Map` holds everything that does not change over the course of an RBattle
 /// game. This includes a graph, and a set of nodes that have goop sources.
-pub struct Map<G: Graph> {
+pub struct Map<G: VisibleGraph> {
     /// The graph of nodes comprising this map's territory.
-    graph: G,
+    pub graph: G,
 
     /// The nodes of `graph` that contain goop sources.
-    sources: Vec<Node>
+    pub sources: Vec<Node>
 }
