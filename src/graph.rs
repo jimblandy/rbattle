@@ -9,6 +9,9 @@ pub trait Graph {
     /// in the range 0..graph.nodes().
     fn nodes(&self) -> Node;
 
+    /// Return the number of edges in this graph.
+    fn edges(&self) -> usize;
+
     /// Return a vector of `node`'s neighbors.
     fn neighbors(&self, node: Node) -> Vec<Node>;
 }

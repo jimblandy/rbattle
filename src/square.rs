@@ -10,7 +10,7 @@ use visible_graph::{GraphPt, IndexedSegment, VisibleGraph};
 /// In graph space, the grid constructed by the call `SquareGrid::new(r, c)`
 /// extends from `(0,0)` to `(c, r)`. Node are numbered in row-major order,
 /// bottom to top, left to right.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SquareGrid {
     rows: usize,
     cols: usize
@@ -38,6 +38,13 @@ impl SquareGrid {
 
 impl Graph for SquareGrid {
     fn nodes(&self) -> Node { self.rows * self.cols }
+
+    fn edges(&self) -> Node {
+        // Each row has self.cols-1 horizontal edges;
+        // each column has self.rows-1 vertical edges.
+        (self.rows * (self.cols - 1) +
+         self.cols * (self.rows - 1))
+    }
 
     fn neighbors(&self, node: Node) -> Vec<usize> {
         let mut neighbors = Vec::new();
@@ -68,6 +75,12 @@ mod square_grid_as_graph {
     #[test]
     fn nodes() {
         assert_eq!(SquareGrid::new(4, 7).nodes(), 28);
+        assert_eq!(SquareGrid::new(0, 100).nodes(), 0);
+    }
+
+    #[test]
+    fn edges() {
+        assert_eq!(SquareGrid::new(4, 7).edges(), 55);
         assert_eq!(SquareGrid::new(0, 100).nodes(), 0);
     }
 
