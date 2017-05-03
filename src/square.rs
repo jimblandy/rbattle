@@ -129,7 +129,7 @@ impl VisibleGraph for SquareGrid {
         GraphPt(col as f32 + 0.5, row as f32 + 0.5)
     }
 
-    fn radius(&self, _node: Node) -> f32 { 0.5 }
+    fn radius(&self) -> f32 { 0.5 }
 
     fn boundary(&self, node: Node) -> Vec<IndexedSegment> {
         let (rows, cols) = (self.rows, self.cols);
@@ -268,7 +268,7 @@ mod square_grid_as_visible_graph {
 
     #[test]
     fn radius() {
-        assert_eq!(SquareGrid::new(1, 1).radius(0), 0.5);
+        assert_eq!(SquareGrid::new(1, 1).radius(), 0.5);
     }
 
     #[test]

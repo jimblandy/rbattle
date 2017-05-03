@@ -58,10 +58,10 @@ pub trait VisibleGraph: Graph {
     /// Return the center of `node`.
     fn center(&self, node: Node) -> GraphPt;
 
-    /// Return the radius of the largest circle centered on `node`
-    /// that lies entirely within its area. The game is easier to play
-    /// when most nodes have similar radii.
-    fn radius(&self, node: Node) -> f32;
+    /// Return the radius of the circle that should represent a node full of
+    /// goop. This needs to be the same radius for all nodes in the graph, so
+    /// that people can compare the amount of goop present in different nodes.
+    fn radius(&self) -> f32;
 
     /// Return a vector of the line segments that bound `node`'s area.
     fn boundary(&self, node: Node) -> Vec<IndexedSegment>;
