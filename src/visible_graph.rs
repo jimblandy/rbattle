@@ -1,8 +1,7 @@
+//! The `VisibleGraph` trait, and types it refers to.
+
 use graph::{Graph, Node};
 use std::ops::Range;
-
-/// A point in the graph's two-dimensional space.
-pub type Point = (f32, f32);
 
 /// A `Graph` that can be drawn on the screen.
 ///
@@ -27,8 +26,7 @@ pub type Point = (f32, f32);
 ///
 /// A `VisibleGraph` uses its own coordinate space, called "graph space". Its
 /// nodes' areas always fall in within some axis-aligned bounding box
-/// (0,0)..(max_x,max_y). You can obtain `(max_x,max_y)` by calling the graph's
-/// `bounds` method.
+/// (0,0)..graph.bounds(). The `GraphPt` type represents a point in graph space.
 ///
 /// # Boundary lines
 ///
@@ -53,13 +51,12 @@ pub type Point = (f32, f32);
 /// be moved from CPU to GPU to draw a given frame.
 
 pub trait VisibleGraph: Graph {
-    /// Return the bounds of the entire graph as a pair `(max_x, max_y)`. The
-    /// areas of all nodes in the graph fall in the rectangle
-    /// `(0..max_x, 0..max-y)`.
-    fn bounds(&self) -> (f32, f32);
+    /// Return the upper-right corner of the smallest axis-aligned
+    /// bounding box that contains all nodes' areas.
+    fn bounds(&self) -> GraphPt;
 
     /// Return the center of `node`.
-    fn center(&self, node: Node) -> Point;
+    fn center(&self, node: Node) -> GraphPt;
 
     /// Return the radius of the largest circle centered on `node`
     /// that lies entirely within its area. The game is easier to play
@@ -72,13 +69,17 @@ pub trait VisibleGraph: Graph {
     /// Return a vector holding all boundaries' line segments' endpoint
     /// coordinates. The `boundary` iterator refers to these positions by their
     /// index.
-    fn endpoints(&self) -> Vec<Point>;
+    fn endpoints(&self) -> Vec<GraphPt>;
 
     /// Determine which boundary line a mouse click on the point `(x, y)` refers
     /// to. If it refers to a boundary line between two nodes, return them.
     /// Otherwise, return `None`.
-    fn boundary_hit(&self, &Point) -> Option<(Node, Node)>;
+    fn boundary_hit(&self, &GraphPt) -> Option<(Node, Node)>;
 }
+
+/// A point in the graph coordinate space.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct GraphPt(pub f32, pub f32);
 
 /// A line segment from the boundary of a node's area.
 #[derive(Clone, Debug)]

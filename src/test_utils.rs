@@ -1,7 +1,7 @@
 /// Utilities for tests.
 
 use graph::Node;
-use visible_graph::{Point,IndexedSegment};
+use visible_graph::{GraphPt,IndexedSegment};
 
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
@@ -41,14 +41,14 @@ macro_rules! assert_same_elements {
 }
 
 
-/// A newtype around visible_graph::Point that can be compared and hashed.
+/// A newtype around visible_graph::GraphPt that can be compared and hashed.
 ///
 /// `f32` doesn't implement `Eq` or `Hash`, because a NaN != itself,
 /// and `Eq` requires that `x == x`. This makes writing tests painful.
 ///
 /// This newtype simply treats `NaN`s as equal, and hashes `f32` bitwise.
 #[derive(Clone, Copy, Debug)]
-pub struct EqPoint(pub Point);
+pub struct EqPoint(pub GraphPt);
 
 /// Return the bit pattern of `f`.
 fn f32_bits(f: f32) -> u32 {
@@ -88,12 +88,12 @@ impl Hash for EqPoint {
     }
 }
 
-/// Convert a Vec<Point> to a Vec<EqPoint>.
-pub fn into_eq_points(points: Vec<Point>) -> Vec<EqPoint> {
+/// Convert a Vec<GraphPt> to a Vec<EqPoint>.
+pub fn into_eq_points(points: Vec<GraphPt>) -> Vec<EqPoint> {
     unsafe {
-        // This is safe because `EqPoint` is just a newtype for `Point`,
+        // This is safe because `EqPoint` is just a newtype for `GraphPt`,
         // so they have the same representation in memory.
-        ::std::mem::transmute::<Vec<Point>, Vec<EqPoint>>(points)
+        ::std::mem::transmute::<Vec<GraphPt>, Vec<EqPoint>>(points)
     }
 }
 
@@ -106,12 +106,12 @@ pub fn into_eq_points(points: Vec<Point>) -> Vec<EqPoint> {
 /// Otherwise, the meanings of the fields are the same as those in `IndexedSegment`.
 #[derive(Clone, Debug)]
 pub struct SegmentWithPoints {
-    line: Range<Point>,
+    line: Range<GraphPt>,
     neighbor: Option<Node>
 }
 
 /// Return `segment` with its endpoints put in a consistent order.
-fn order_segment(segment: &Range<Point>) -> Range<Point> {
+fn order_segment(segment: &Range<GraphPt>) -> Range<GraphPt> {
     let start = &segment.start;
     let end = &segment.end;
     if f32_bits(start.0) > f32_bits(end.0) ||
@@ -124,7 +124,7 @@ fn order_segment(segment: &Range<Point>) -> Range<Point> {
 }
 
 impl SegmentWithPoints {
-    pub fn new(line: &Range<Point>, neighbor: Option<Node>) -> SegmentWithPoints {
+    pub fn new(line: &Range<GraphPt>, neighbor: Option<Node>) -> SegmentWithPoints {
         SegmentWithPoints {
             line: order_segment(line),
             neighbor: neighbor
@@ -133,7 +133,7 @@ impl SegmentWithPoints {
 
     /// Construct a `SegmentWithPoints` from an `IndexedSegment` and a slice of
     /// the endpoints it refers to.
-    pub fn from_indexed(indexed: &IndexedSegment, endpoints: &[Point]) -> SegmentWithPoints {
+    pub fn from_indexed(indexed: &IndexedSegment, endpoints: &[GraphPt]) -> SegmentWithPoints {
         let line = Range {
             start: endpoints[indexed.line.start],
             end:   endpoints[indexed.line.end]
@@ -144,7 +144,7 @@ impl SegmentWithPoints {
 
 /// Given a `segments` and `endpoints`, a slice of endpoints the segments refer
 /// to, construct an equivalent `Vec<SegmentWithPoints>`.
-pub fn into_points(segments: &[IndexedSegment], endpoints: &[Point]) -> Vec<SegmentWithPoints> {
+pub fn into_points(segments: &[IndexedSegment], endpoints: &[GraphPt]) -> Vec<SegmentWithPoints> {
     segments.iter()
         .map(|seg| SegmentWithPoints::from_indexed(seg, endpoints))
         .collect::<Vec<_>>()

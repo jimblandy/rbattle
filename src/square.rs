@@ -1,7 +1,7 @@
 //! Types for square grids.
 
 use graph::{Graph, Node};
-use visible_graph::{IndexedSegment, Point, VisibleGraph};
+use visible_graph::{GraphPt, IndexedSegment, VisibleGraph};
 
 /// A grid of 1✕1 squares, of a given number of rows and columns. A cell's
 /// neighbors are those above, below, and to the left and right of it; diagonal
@@ -107,13 +107,13 @@ mod square_grid_as_graph {
 }
 
 impl VisibleGraph for SquareGrid {
-    fn bounds(&self) -> (f32, f32) {
-        (self.cols as f32, self.rows as f32)
+    fn bounds(&self) -> GraphPt {
+        GraphPt(self.cols as f32, self.rows as f32)
     }
 
-    fn center(&self, node: Node) -> Point {
+    fn center(&self, node: Node) -> GraphPt {
         let (row, col) = self.node_rc(node);
-        (col as f32 + 0.5, row as f32 + 0.5)
+        GraphPt(col as f32 + 0.5, row as f32 + 0.5)
     }
 
     fn radius(&self, _node: Node) -> f32 { 0.5 }
@@ -159,11 +159,11 @@ impl VisibleGraph for SquareGrid {
         segments
     }
 
-    fn endpoints(&self) -> Vec<Point> {
+    fn endpoints(&self) -> Vec<GraphPt> {
         let mut points = Vec::new();
         for r in 0 .. self.rows + 1 {
             for c in 0 .. self.cols + 1 {
-                points.push((c as f32, r as f32))
+                points.push(GraphPt(c as f32, r as f32))
             }
         }
         points
@@ -174,7 +174,7 @@ impl VisibleGraph for SquareGrid {
     /// are squares, centered on the point in question. We let the squares
     /// overlap a bit, leaving rectangles around each boundary line segment to
     /// treat as hits.
-    fn boundary_hit(&self, point: &Point) -> Option<(Node, Node)> {
+    fn boundary_hit(&self, point: &GraphPt) -> Option<(Node, Node)> {
         // Exclude points further than this from the side of a node, or nearer
         // than this to a square corner. Clearly, this must be less than 0.5, to
         // avoid ambiguity.
@@ -183,7 +183,7 @@ impl VisibleGraph for SquareGrid {
         // Exclude points outside the grid altogether, or on the outer edges.
         // This lets us assume that every hit we find is an interior boundary,
         // with another node on the other side.
-        let (max_x, max_y) = self.bounds();
+        let GraphPt(max_x, max_y) = self.bounds();
         if point.0 < TOLERANCE || point.0 > max_x - TOLERANCE ||
             point.1 < TOLERANCE || point.1 > max_y - TOLERANCE
         {
@@ -227,27 +227,30 @@ impl VisibleGraph for SquareGrid {
 
 #[cfg(test)]
 mod square_grid_as_visible_graph {
-    use visible_graph::VisibleGraph;
+    use visible_graph::{GraphPt, VisibleGraph};
     use super::SquareGrid;
+
+    /// Construct a GraphPt. For brevity in tests.
+    fn gp(x: f32, y: f32) -> GraphPt { GraphPt(x, y) }
 
     #[test]
     fn bounds() {
-        assert_eq!(SquareGrid::new(4, 7).bounds(), (7.0, 4.0));
+        assert_eq!(SquareGrid::new(4, 7).bounds(), gp(7.0, 4.0));
     }
 
     #[test]
     fn center() {
         let grid = SquareGrid::new(4, 7);
-        assert_eq!(grid.center(0), (0.5, 0.5));
-        assert_eq!(grid.center(1), (1.5, 0.5));
-        assert_eq!(grid.center(6), (6.5, 0.5));
+        assert_eq!(grid.center(0), gp(0.5, 0.5));
+        assert_eq!(grid.center(1), gp(1.5, 0.5));
+        assert_eq!(grid.center(6), gp(6.5, 0.5));
 
-        assert_eq!(grid.center(7), (0.5, 1.5));
-        assert_eq!(grid.center(9), (2.5, 1.5));
+        assert_eq!(grid.center(7), gp(0.5, 1.5));
+        assert_eq!(grid.center(9), gp(2.5, 1.5));
 
-        assert_eq!(grid.center(21), (0.5, 3.5));
-        assert_eq!(grid.center(22), (1.5, 3.5));
-        assert_eq!(grid.center(27), (6.5, 3.5));
+        assert_eq!(grid.center(21), gp(0.5, 3.5));
+        assert_eq!(grid.center(22), gp(1.5, 3.5));
+        assert_eq!(grid.center(27), gp(6.5, 3.5));
     }
 
     #[test]
@@ -261,15 +264,15 @@ mod square_grid_as_visible_graph {
 
         assert_same_elements!(
             into_eq_points(SquareGrid::new(1, 1).endpoints()),
-            into_eq_points(vec![(0.0, 0.0), (0.0, 1.0),
-                                (1.0, 0.0), (1.0, 1.0)]));
+            into_eq_points(vec![gp(0.0, 0.0), gp(0.0, 1.0),
+                                gp(1.0, 0.0), gp(1.0, 1.0)]));
 
         assert_same_elements!(
             into_eq_points(SquareGrid::new(3, 2).endpoints()),
-            into_eq_points(vec![(0.0, 0.0), (1.0, 0.0), (2.0, 0.0),
-                                (0.0, 1.0), (1.0, 1.0), (2.0, 1.0),
-                                (0.0, 2.0), (1.0, 2.0), (2.0, 2.0),
-                                (0.0, 3.0), (1.0, 3.0), (2.0, 3.0)]));
+            into_eq_points(vec![gp(0.0, 0.0), gp(1.0, 0.0), gp(2.0, 0.0),
+                                gp(0.0, 1.0), gp(1.0, 1.0), gp(2.0, 1.0),
+                                gp(0.0, 2.0), gp(1.0, 2.0), gp(2.0, 2.0),
+                                gp(0.0, 3.0), gp(1.0, 3.0), gp(2.0, 3.0)]));
 
     }
 
@@ -278,9 +281,9 @@ mod square_grid_as_visible_graph {
         use graph::Node;
         use std::ops::Range;
         use test_utils::{into_points, SegmentWithPoints};
-        use visible_graph::Point;
+        use visible_graph::GraphPt;
 
-        fn swp(start: Point, end: Point, neighbor: Option<Node>) -> SegmentWithPoints
+        fn swp(start: GraphPt, end: GraphPt, neighbor: Option<Node>) -> SegmentWithPoints
         {
             SegmentWithPoints::new(&Range { start, end }, neighbor)
         }
@@ -289,25 +292,25 @@ mod square_grid_as_visible_graph {
         let endpoints = grid.endpoints();
         assert_same_elements!(
             into_points(&grid.boundary(0), &endpoints),
-            vec![swp((0.0, 0.0), (1.0, 0.0), None),
-                 swp((1.0, 0.0), (1.0, 1.0), None),
-                 swp((1.0, 1.0), (0.0, 1.0), None),
-                 swp((0.0, 1.0), (0.0, 0.0), None)]);
+            vec![swp(gp(0.0, 0.0), gp(1.0, 0.0), None),
+                 swp(gp(1.0, 0.0), gp(1.0, 1.0), None),
+                 swp(gp(1.0, 1.0), gp(0.0, 1.0), None),
+                 swp(gp(0.0, 1.0), gp(0.0, 0.0), None)]);
 
         let grid = SquareGrid::new(3, 2);
         let endpoints = grid.endpoints();
         assert_same_elements!(
             into_points(&grid.boundary(0), &endpoints),
-            vec![swp((0.0, 0.0), (1.0, 0.0), None),
-                 swp((1.0, 0.0), (1.0, 1.0), Some(1)),
-                 swp((1.0, 1.0), (0.0, 1.0), Some(2)),
-                 swp((0.0, 1.0), (0.0, 0.0), None)]);
+            vec![swp(gp(0.0, 0.0), gp(1.0, 0.0), None),
+                 swp(gp(1.0, 0.0), gp(1.0, 1.0), Some(1)),
+                 swp(gp(1.0, 1.0), gp(0.0, 1.0), Some(2)),
+                 swp(gp(0.0, 1.0), gp(0.0, 0.0), None)]);
         assert_same_elements!(
             into_points(&grid.boundary(3), &endpoints),
-            vec![swp((1.0, 1.0), (2.0, 1.0), Some(1)),
-                 swp((2.0, 1.0), (2.0, 2.0), None),
-                 swp((2.0, 2.0), (1.0, 2.0), Some(5)),
-                 swp((1.0, 2.0), (1.0, 1.0), Some(2))]);
+            vec![swp(gp(1.0, 1.0), gp(2.0, 1.0), Some(1)),
+                 swp(gp(2.0, 1.0), gp(2.0, 2.0), None),
+                 swp(gp(2.0, 2.0), gp(1.0, 2.0), Some(5)),
+                 swp(gp(1.0, 2.0), gp(1.0, 1.0), Some(2))]);
     }
 
     #[test]
@@ -329,45 +332,45 @@ mod square_grid_as_visible_graph {
         let grid = SquareGrid::new(3, 4);
 
         // Wildly outside the grid.
-        assert_eq!(grid.boundary_hit(&(-100.0, -100.0)), None);
-        assert_eq!(grid.boundary_hit(&(-100.0, 1.5)),    None);
-        assert_eq!(grid.boundary_hit(&(-100.0, 2000.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(-100.0, -100.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(-100.0, 1.5)),    None);
+        assert_eq!(grid.boundary_hit(&gp(-100.0, 2000.0)), None);
 
-        assert_eq!(grid.boundary_hit(&(2.0, -100.0)),    None);
-        assert_eq!(grid.boundary_hit(&(2.0, 2000.0)),    None);
+        assert_eq!(grid.boundary_hit(&gp(2.0, -100.0)),    None);
+        assert_eq!(grid.boundary_hit(&gp(2.0, 2000.0)),    None);
 
-        assert_eq!(grid.boundary_hit(&(2000.0, -100.0)), None);
-        assert_eq!(grid.boundary_hit(&(2000.0, 1.5)),    None);
-        assert_eq!(grid.boundary_hit(&(2000.0, 2000.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(2000.0, -100.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(2000.0, 1.5)),    None);
+        assert_eq!(grid.boundary_hit(&gp(2000.0, 2000.0)), None);
 
         // Nearby outside.
-        assert_eq!(grid.boundary_hit(&(2.0, -0.5)), None);
-        assert_eq!(grid.boundary_hit(&(4.5,  1.5)), None);
-        assert_eq!(grid.boundary_hit(&(2.0,  3.5)), None);
-        assert_eq!(grid.boundary_hit(&(-0.5, 1.5)), None);
+        assert_eq!(grid.boundary_hit(&gp(2.0, -0.5)), None);
+        assert_eq!(grid.boundary_hit(&gp(4.5,  1.5)), None);
+        assert_eq!(grid.boundary_hit(&gp(2.0,  3.5)), None);
+        assert_eq!(grid.boundary_hit(&gp(-0.5, 1.5)), None);
 
         // On corners.
-        assert_eq!(grid.boundary_hit(&(0.0, 0.0)), None);
-        assert_eq!(grid.boundary_hit(&(4.0, 0.0)), None);
-        assert_eq!(grid.boundary_hit(&(4.0, 3.0)), None);
-        assert_eq!(grid.boundary_hit(&(0.0, 3.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(0.0, 0.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(4.0, 0.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(4.0, 3.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(0.0, 3.0)), None);
 
         // On sides.
-        assert_eq!(grid.boundary_hit(&(3.5, 0.0)), None);
-        assert_eq!(grid.boundary_hit(&(4.0, 2.3)), None);
-        assert_eq!(grid.boundary_hit(&(1.7, 3.0)), None);
-        assert_eq!(grid.boundary_hit(&(0.0, 1.2)), None);
+        assert_eq!(grid.boundary_hit(&gp(3.5, 0.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(4.0, 2.3)), None);
+        assert_eq!(grid.boundary_hit(&gp(1.7, 3.0)), None);
+        assert_eq!(grid.boundary_hit(&gp(0.0, 1.2)), None);
 
         // Interior horizontal.
-        assert_eq!(s(grid.boundary_hit(&(0.5, 1.1))), Some((0, 4)));
-        assert_eq!(s(grid.boundary_hit(&(3.6, 1.9))), Some((7, 11)));
+        assert_eq!(s(grid.boundary_hit(&gp(0.5, 1.1))), Some((0, 4)));
+        assert_eq!(s(grid.boundary_hit(&gp(3.6, 1.9))), Some((7, 11)));
 
         // Interior vertical.
-        assert_eq!(s(grid.boundary_hit(&(2.1, 1.3))), Some((5, 6)));
-        assert_eq!(s(grid.boundary_hit(&(3.0, 2.7))), Some((10, 11)));
+        assert_eq!(s(grid.boundary_hit(&gp(2.1, 1.3))), Some((5, 6)));
+        assert_eq!(s(grid.boundary_hit(&gp(3.0, 2.7))), Some((10, 11)));
 
         // Inside the grid but not close to any boundary line.
-        assert_eq!(s(grid.boundary_hit(&(2.4, 1.6))), None);
-        assert_eq!(s(grid.boundary_hit(&(1.3, 0.7))), None);
+        assert_eq!(s(grid.boundary_hit(&gp(2.4, 1.6))), None);
+        assert_eq!(s(grid.boundary_hit(&gp(1.3, 0.7))), None);
     }
 }
