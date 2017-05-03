@@ -5,6 +5,7 @@ use visible_graph::VisibleGraph;
 ///
 /// A `Map` holds everything that does not change over the course of an RBattle
 /// game. This includes a graph, and a set of nodes that have goop sources.
+#[derive(Debug)]
 pub struct Map<G: VisibleGraph> {
     /// The graph of nodes comprising this map's territory.
     pub graph: G,

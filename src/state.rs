@@ -4,9 +4,11 @@ use map::Map;
 use std::rc::Rc;
 
 /// A player id number.
+#[derive(Debug, Copy, Clone)]
 pub struct Player(usize);
 
 /// The complete state of an RBattle game board.
+#[derive(Debug, Clone)]
 pub struct State<G: VisibleGraph> {
     /// The map being played on.
     pub map: Rc<Map<G>>,
@@ -16,6 +18,7 @@ pub struct State<G: VisibleGraph> {
 }
 
 /// The state of a single node on a game board.
+#[derive(Debug, Clone)]
 pub struct NodeState {
     /// The player who controls this node, if any.
     pub owner: Option<Player>,
