@@ -32,4 +32,10 @@ pub struct NodeState {
     pub outflows: Vec<Node>
 }
 
+impl NodeState {
+    pub fn empty() -> NodeState {
+        NodeState { owner: None, goop: 0, outflows: vec![] }
+    }
+}
+
 pub const MAX_GOOP: usize = 15;

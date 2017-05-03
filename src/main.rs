@@ -19,13 +19,15 @@ mod state;
 mod visible_graph;
 
 use drawer::Drawer;
+use graph::Graph;
 use map::Map;
 use square::SquareGrid;
-use state::State;
+use state::{NodeState, State};
 
 use glium::glutin::Event;
 use glium::Surface;
 
+use std::iter::repeat;
 use std::rc::Rc;
 
 // This only gives access within this module. Make this `pub use errors::*;`
@@ -67,19 +69,30 @@ fn run() -> Result<()> {
         .build_glium()
         .chain_err(|| "unable to open window")?;
 
-    let map = Rc::new(Map {
-        graph: SquareGrid::new(30, 40),
-        sources: vec![]
-    });
-
+    let graph = SquareGrid::new(15, 15);
+    let sources = vec![];
+    let map = Rc::new(Map::new(graph, sources));
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
 
+    let mut victim = 0;
+    let mut wait = 0;
     loop {
-        let state = State {
+        let mut state = State {
             map: map.clone(),
-            nodes: vec![]
+            nodes: repeat(NodeState::empty()).take(map.graph.nodes()).collect()
         };
+
+        state.nodes[victim].outflows = map.graph.neighbors(victim);
+
+        wait += 1;
+        if wait > 10 {
+            wait = 0;
+            victim += 14;
+            while victim >= map.graph.nodes() {
+                victim -= map.graph.nodes();
+            }
+        }
 
         let mut frame = display.draw();
         frame.clear_color(1.0, 0.43, 0.0, 1.0);

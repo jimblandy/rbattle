@@ -1,5 +1,6 @@
 use graph::Node;
-use visible_graph::VisibleGraph;
+use math::{compose, translate_transform, scale_transform};
+use visible_graph::{GraphPt, VisibleGraph};
 
 /// A map on which an RBattle game is played.
 ///
@@ -11,5 +12,29 @@ pub struct Map<G: VisibleGraph> {
     pub graph: G,
 
     /// The nodes of `graph` that contain goop sources.
-    pub sources: Vec<Node>
+    pub sources: Vec<Node>,
+
+    /// Transformation from graph space to game space.
+    pub graph_to_game: [[f32; 3]; 3],
+
+    /// The aspect ratio (width / height) of the game rectangle.
+    pub game_aspect: f32
+}
+
+impl<G: VisibleGraph> Map<G> {
+    pub fn new(graph: G, sources: Vec<Node>) -> Map<G> {
+        // Compute the transformation from graph space, where points run from
+        // (0, 0) to upper_right, to game space, where points run from (-1, -1)
+        // to (1,1).
+        let GraphPt(width, height) = graph.bounds();
+        let game_aspect = width / height;
+        let graph_to_game =
+            compose(translate_transform(-1.0, -1.0),
+                    scale_transform(2.0 / width, 2.0 / height));
+
+        // A little margin inside the window is nice.
+        let graph_to_game = compose(scale_transform(0.95, 0.95), graph_to_game);
+
+        Map { graph, sources, graph_to_game, game_aspect }
+    }
 }

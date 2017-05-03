@@ -31,14 +31,16 @@
 
 use errors::*;
 use map::Map;
-use state::State;
-use math::{compose, scale_transform, translate_transform};
+use state::{State, NodeState};
+use math::{compose, scale_transform};
 use visible_graph::{GraphPt, VisibleGraph};
 
 use glium::{DrawParameters, Frame, IndexBuffer, Program, Surface, VertexBuffer};
 use glium::backend::Facade;
 use glium::index::PrimitiveType;
 //use glium::vertex::Vertex;
+
+use std::cell::RefCell;
 
 /// A `Drawer` knows how to draw a `State` on a Glium `Frame`.
 ///
@@ -52,40 +54,72 @@ pub struct Drawer {
     /// Cached information needed to drawing the map, excluding the map itself.
     /// This holds vertex and index buffers, shader programs, transformations,
     /// and the like.
-    pub map: MapDrawer
+    map: MapDrawer,
+
+    /// Cached information needed to draw outflows.
+    outflows: OutflowsDrawer
 }
 
 impl Drawer {
     pub fn new<G>(display: &Facade, map: &Map<G>) -> Result<Drawer>
         where G: VisibleGraph
     {
-        Ok(Drawer {
-            map: MapDrawer::new(display, map)?
-        })
+        let map_drawer = MapDrawer::new(display, map)?;
+        let outflows = OutflowsDrawer::new(display, map)?;
+
+        Ok(Drawer { map: map_drawer, outflows })
     }
 
     pub fn draw<G>(&self, frame: &mut Frame, state: &State<G>) -> Result<()>
         where G: VisibleGraph
     {
-        self.map.draw(frame, &state.map)
+        let map_frame = MapFrame::new(frame, &state.map);
+        self.map.draw(frame, &state.map, &map_frame)?;
+        self.outflows.draw(frame, &state.nodes, &map_frame)?;
+        Ok(())
     }
 }
 
-pub struct MapDrawer {
+/// Information about the map computed afresh for each frame,
+/// needed for anything that draws things on the map.
+struct MapFrame {
+    graph_to_device: [[f32; 3]; 3]
+}
+
+impl MapFrame {
+    fn new<G: VisibleGraph>(frame: &mut Frame, map: &Map<G>) -> MapFrame {
+        // Compute the aspect ratio of the window (the "device"), assuming
+        // square pixels.
+        let (width, height) = frame.get_dimensions();
+        let device_aspect = width as f32 / height as f32;
+
+        // Compute the transformation from game coordinates to normalized device
+        // coordinates. Depending on their relative aspect ratios, the game may
+        // be centered either vertically or horizontally within the window.
+        let game_to_device =
+            if device_aspect > map.game_aspect {
+                // Window is wider than game. Game centered horizontally.
+                scale_transform(map.game_aspect / device_aspect, 1.0)
+            } else {
+                // Game is wider than window. Game centered vertically.
+                scale_transform(1.0, device_aspect / map.game_aspect)
+            };
+
+        let graph_to_device = compose(game_to_device, map.graph_to_game);
+
+        MapFrame { graph_to_device }
+    }
+}
+
+struct MapDrawer {
+    /// Shader program for drawing the map.
+    program: Program,
+
     /// Vertexes of the graph's boundary lines.
     vertices: VertexBuffer<GraphVert>,
 
     /// Indices for the graph's boundary lines.
     indices: IndexBuffer<u32>,
-
-    /// Transformation from graph space to game space.
-    graph_to_game: [[f32; 3]; 3],
-
-    /// The aspect ratio (width / height) of the game rectangle.
-    game_aspect: f32,
-
-    /// Shader program for drawing the map.
-    program: Program,
 
     /// Draw parameters for drawing the map.
     draw_params: DrawParameters<'static>
@@ -97,11 +131,17 @@ impl MapDrawer {
     {
         let graph = &map.graph;
 
+        let program = Program::from_source(display,
+                                           include_str!("map.vert"),
+                                           include_str!("map.frag"),
+                                           None)
+            .chain_err(|| "compiling map shaders")?;
+
         // It's a little annoying that we have to do this map to convert GraphPt
         // to GraphVert, but I'd rather do this than a transmute.
-        let vertices = graph.endpoints().into_iter()
+        let vertices: Vec<GraphVert> = graph.endpoints().into_iter()
             .map(|point| GraphVert { point: [point.0, point.1] })
-            .collect::<Vec<GraphVert>>();
+            .collect();
         let vertices = VertexBuffer::new(display, &vertices)
             .chain_err(|| "building buffer for graph vertices")?;
 
@@ -125,31 +165,13 @@ impl MapDrawer {
         let indices = IndexBuffer::new(display, PrimitiveType::LinesList, &indices)
             .chain_err(|| "building buffer for graph indices")?;
 
-        // Compute the transformation from graph space, where points run from
-        // (0, 0) to upper_right, to game space, where points run from (-1, -1)
-        // to (1,1).
-        let GraphPt(width, height) = graph.bounds();
-        let game_aspect = width / height;
-        let graph_to_game =
-            compose(translate_transform(-1.0, -1.0),
-                    scale_transform(2.0 / width, 2.0 / height));
-
-        // A little margin inside the window is nice.
-        let graph_to_game = compose(scale_transform(0.95, 0.95), graph_to_game);
-
-        let program = Program::from_source(display,
-                                           include_str!("map.vert"),
-                                           include_str!("map.frag"),
-                                           None)
-            .chain_err(|| "compiling map shaders")?;
-
         let draw_params = DrawParameters {
             line_width: Some(2.0),
             .. Default::default()
         };
 
         Ok(MapDrawer {
-            vertices, indices, game_aspect, graph_to_game, program, draw_params
+            program, vertices, indices, draw_params
         })
     }
 
@@ -157,31 +179,12 @@ impl MapDrawer {
     ///
     /// The map `state` uses must be the same map that was passed to
     /// `MapDrawer::new` when this `MapDrawer` was created.
-    fn draw<G>(&self, frame: &mut Frame, _map: &Map<G>) -> Result<()>
+    fn draw<G>(&self, frame: &mut Frame, _map: &Map<G>, map_frame: &MapFrame) -> Result<()>
         where G: VisibleGraph
     {
-        // Compute the aspect ratio of the window (the "device"), assuming
-        // square pixels.
-        let (width, height) = frame.get_dimensions();
-        let device_aspect = width as f32 / height as f32;
-
-        // Compute the transformation from game coordinates to normalized device
-        // coordinates. Depending on their relative aspect ratios, the game may
-        // be centered either vertically or horizontally within the window.
-        let game_to_device =
-            if device_aspect > self.game_aspect {
-                // Window is wider than game. Game centered horizontally.
-                scale_transform(self.game_aspect / device_aspect, 1.0)
-            } else {
-                // Game is wider than window. Game centered vertically.
-                scale_transform(1.0, device_aspect / self.game_aspect)
-            };
-
-        let graph_to_device = compose(game_to_device, self.graph_to_game);
-
         frame.draw(&self.vertices, &self.indices, &self.program,
                    &uniform! {
-                       graph_to_device: graph_to_device
+                       graph_to_device: map_frame.graph_to_device
                    },
                    &self.draw_params)
             .chain_err(|| "drawing map")?;
@@ -195,3 +198,83 @@ impl MapDrawer {
 struct GraphVert { point: [f32; 2] }
 
 implement_vertex!(GraphVert, point);
+
+struct OutflowsDrawer {
+    /// Shader program for drawing the outflows.
+    program: Program,
+
+    /// Vertexes of the nodes' center positions.
+    centers: VertexBuffer<GraphVert>,
+
+    /// Index buffer for outflows. This is a "persistent" index buffer, updated
+    /// once per frame.
+    indices: RefCell<IndexBuffer<u32>>,
+
+    /// Draw parameters for outflows.
+    draw_params: DrawParameters<'static>
+}
+
+impl OutflowsDrawer {
+    fn new<G>(display: &Facade, map: &Map<G>) -> Result<OutflowsDrawer>
+        where G: VisibleGraph
+    {
+        let graph = &map.graph;
+
+        let program = Program::from_source(display,
+                                           include_str!("map.vert"),
+                                           include_str!("outflow.frag"),
+                                           None)
+            .chain_err(|| "compiling outflow shaders")?;
+
+        let centers: Vec<GraphVert> = (0..graph.nodes())
+            .map(|node| {
+                let GraphPt(x, y) = graph.center(node);
+                GraphVert { point: [x, y] }
+            })
+            .collect();
+        let centers = VertexBuffer::new(display, &centers)
+            .chain_err(|| "building buffer for outflow vertices")?;
+
+        println!("graph edges = {}", graph.edges());
+        let indices = IndexBuffer::empty_persistent(display,
+                                                    PrimitiveType::LinesList,
+                                                    graph.edges())
+            .chain_err(|| "allocating outflow index buffer")?;
+
+        let draw_params = DrawParameters {
+            line_width: Some(5.0),
+            .. Default::default()
+        };
+
+        Ok(OutflowsDrawer { program, centers, indices: RefCell::new(indices), draw_params })
+    }
+
+    fn draw(&self, frame: &mut Frame, nodes: &[NodeState], map_frame: &MapFrame)
+               -> Result<()>
+    {
+        let mut indices = Vec::new();
+        for (node, state) in nodes.iter().enumerate() {
+            for &outflow in &state.outflows {
+                indices.push(node as u32);
+                indices.push(outflow as u32);
+            }
+        }
+
+        if indices.len() > 0 {
+            self.indices.borrow_mut().slice_mut(0..indices.len())
+                .expect("more outflow edges than graph edges")
+                .write(&indices);
+
+            frame.draw(&self.centers,
+                       self.indices.borrow().slice(0..indices.len()).unwrap(),
+                       &self.program,
+                       &uniform! {
+                           graph_to_device: map_frame.graph_to_device
+                       },
+                       &self.draw_params)
+                .chain_err(|| "drawing outflows")?;
+        }
+
+        Ok(())
+    }
+}
