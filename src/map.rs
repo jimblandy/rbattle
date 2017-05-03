@@ -18,11 +18,14 @@ pub struct Map<G: VisibleGraph> {
     pub graph_to_game: [[f32; 3]; 3],
 
     /// The aspect ratio (width / height) of the game rectangle.
-    pub game_aspect: f32
+    pub game_aspect: f32,
+
+    /// The color of each player's goop, indexed by player number.
+    pub player_colors: Vec<(u8, u8, u8)>,
 }
 
 impl<G: VisibleGraph> Map<G> {
-    pub fn new(graph: G, sources: Vec<Node>) -> Map<G> {
+    pub fn new(graph: G, sources: Vec<Node>, player_colors: Vec<(u8, u8, u8)>) -> Map<G> {
         // Compute the transformation from graph space, where points run from
         // (0, 0) to upper_right, to game space, where points run from (-1, -1)
         // to (1,1).
@@ -35,6 +38,10 @@ impl<G: VisibleGraph> Map<G> {
         // A little margin inside the window is nice.
         let graph_to_game = compose(scale_transform(0.95, 0.95), graph_to_game);
 
-        Map { graph, sources, graph_to_game, game_aspect }
+        Map { graph, sources, graph_to_game, game_aspect, player_colors }
     }
 }
+
+/// A player id number.
+#[derive(Debug, Copy, Clone)]
+pub struct Player(usize);

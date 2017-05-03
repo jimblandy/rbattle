@@ -71,7 +71,10 @@ fn run() -> Result<()> {
 
     let graph = SquareGrid::new(15, 15);
     let sources = vec![];
-    let map = Rc::new(Map::new(graph, sources));
+    let colors = vec![(0x9f, 0x20, 0xb1), (0xb1, 0x20, 0x44),
+                      (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1),
+                      (0xe0, 0x6f, 0x3a)];
+    let map = Rc::new(Map::new(graph, sources, colors));
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
 

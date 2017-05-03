@@ -1,11 +1,7 @@
 use graph::Node;
 use visible_graph::VisibleGraph;
-use map::Map;
+use map::{Map, Player};
 use std::rc::Rc;
-
-/// A player id number.
-#[derive(Debug, Copy, Clone)]
-pub struct Player(usize);
 
 /// The complete state of an RBattle game board.
 #[derive(Debug, Clone)]
