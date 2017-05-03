@@ -134,6 +134,9 @@ impl MapDrawer {
             compose(translate_transform(-1.0, -1.0),
                     scale_transform(2.0 / width, 2.0 / height));
 
+        // A little margin inside the window is nice.
+        let graph_to_game = compose(scale_transform(0.95, 0.95), graph_to_game);
+
         let program = Program::from_source(display,
                                            include_str!("map.vert"),
                                            include_str!("map.frag"),
