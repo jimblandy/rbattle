@@ -9,6 +9,10 @@ extern crate error_chain;
 #[macro_use]
 extern crate glium;
 
+#[cfg(test)]
+#[macro_use]
+mod test_utils;
+
 mod drawer;
 mod errors;
 mod graph;
@@ -34,10 +38,6 @@ use std::rc::Rc;
 // instead if the types must be accessible from other modules (e.g., within
 // a `links` section).
 use errors::*;
-
-#[cfg(test)]
-#[macro_use]
-mod test_utils;
 
 fn main() {
     if let Err(ref e) = run() {

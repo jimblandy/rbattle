@@ -80,7 +80,7 @@ mod square_grid_as_graph {
 
     #[test]
     fn edges() {
-        assert_eq!(SquareGrid::new(4, 7).edges(), 55);
+        assert_eq!(SquareGrid::new(4, 7).edges(), 45);
         assert_eq!(SquareGrid::new(0, 100).nodes(), 0);
     }
 
