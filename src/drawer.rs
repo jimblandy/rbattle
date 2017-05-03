@@ -235,7 +235,6 @@ impl OutflowsDrawer {
         let centers = VertexBuffer::new(display, &centers)
             .chain_err(|| "building buffer for outflow vertices")?;
 
-        println!("graph edges = {}", graph.edges());
         let indices = IndexBuffer::empty_persistent(display,
                                                     PrimitiveType::LinesList,
                                                     graph.edges())
@@ -252,6 +251,7 @@ impl OutflowsDrawer {
     fn draw(&self, frame: &mut Frame, nodes: &[NodeState], map_frame: &MapFrame)
                -> Result<()>
     {
+        // Build indices for the goop flow lines we actually need to draw.
         let mut indices = Vec::new();
         for (node, state) in nodes.iter().enumerate() {
             for &outflow in &state.outflows {
@@ -260,7 +260,10 @@ impl OutflowsDrawer {
             }
         }
 
+        // Glium seems to have a bug with zero-length slices. Let's not argue
+        // with it.
         if indices.len() > 0 {
+            // Write the indices to an appropriately sized slice of `self.indices`.
             self.indices.borrow_mut().slice_mut(0..indices.len())
                 .expect("more outflow edges than graph edges")
                 .write(&indices);
