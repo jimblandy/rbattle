@@ -24,9 +24,9 @@ mod visible_graph;
 
 use drawer::Drawer;
 use graph::Graph;
-use map::Map;
+use map::{Map, Player};
 use square::SquareGrid;
-use state::{NodeState, State};
+use state::{OwnedNode, State};
 
 use glium::glutin::Event;
 use glium::Surface;
@@ -83,10 +83,14 @@ fn run() -> Result<()> {
     loop {
         let mut state = State {
             map: map.clone(),
-            nodes: repeat(NodeState::empty()).take(map.graph.nodes()).collect()
+            nodes: repeat(None).take(map.graph.nodes()).collect()
         };
 
-        state.nodes[victim].outflows = map.graph.neighbors(victim);
+        state.nodes[victim] = Some(OwnedNode {
+            player: Player(0),
+            outflows: map.graph.neighbors(victim),
+            goop: 0
+        });
 
         wait += 1;
         if wait > 10 {

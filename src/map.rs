@@ -44,4 +44,4 @@ impl<G: VisibleGraph> Map<G> {
 
 /// A player id number.
 #[derive(Debug, Copy, Clone)]
-pub struct Player(usize);
+pub struct Player(pub usize);

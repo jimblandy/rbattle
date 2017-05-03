@@ -31,7 +31,7 @@
 
 use errors::*;
 use map::Map;
-use state::{State, NodeState};
+use state::{State, OwnedNode};
 use math::{compose, scale_transform};
 use visible_graph::{GraphPt, VisibleGraph};
 
@@ -248,15 +248,20 @@ impl OutflowsDrawer {
         Ok(OutflowsDrawer { program, centers, indices: RefCell::new(indices), draw_params })
     }
 
-    fn draw(&self, frame: &mut Frame, nodes: &[NodeState], map_frame: &MapFrame)
+    fn draw(&self, frame: &mut Frame, nodes: &[Option<OwnedNode>], map_frame: &MapFrame)
                -> Result<()>
     {
         // Build indices for the goop flow lines we actually need to draw.
         let mut indices = Vec::new();
         for (node, state) in nodes.iter().enumerate() {
-            for &outflow in &state.outflows {
-                indices.push(node as u32);
-                indices.push(outflow as u32);
+            match state {
+                &Some(ref owned) => {
+                    for &outflow in &owned.outflows {
+                        indices.push(node as u32);
+                        indices.push(outflow as u32);
+                    }
+                },
+                _ => ()
             }
         }
 
