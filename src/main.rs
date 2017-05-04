@@ -26,7 +26,7 @@ use drawer::Drawer;
 use graph::Graph;
 use map::{Map, Player};
 use square::SquareGrid;
-use state::{OwnedNode, State};
+use state::{MAX_GOOP, OwnedNode, State};
 
 use glium::glutin::Event;
 use glium::Surface;
@@ -87,13 +87,13 @@ fn run() -> Result<()> {
         };
 
         state.nodes[victim] = Some(OwnedNode {
-            player: Player(0),
+            player: Player(victim % 5),
             outflows: map.graph.neighbors(victim),
-            goop: 0
+            goop: wait
         });
 
         wait += 1;
-        if wait > 10 {
+        if wait > MAX_GOOP {
             wait = 0;
             victim += 14;
             while victim >= map.graph.nodes() {
@@ -102,7 +102,7 @@ fn run() -> Result<()> {
         }
 
         let mut frame = display.draw();
-        frame.clear_color(1.0, 0.43, 0.0, 1.0);
+        frame.clear_color(1.0, 1.0, 1.0, 1.0);
         let status = drawer.draw(&mut frame, &state);
         frame.finish()
             .chain_err(|| "drawing finish failed")?;

@@ -31,7 +31,7 @@
 
 use errors::*;
 use map::Map;
-use state::{State, OwnedNode};
+use state::{State, MAX_GOOP, OwnedNode};
 use math::{compose, scale_transform};
 use visible_graph::{GraphPt, VisibleGraph};
 
@@ -57,7 +57,10 @@ pub struct Drawer {
     map: MapDrawer,
 
     /// Cached information needed to draw outflows.
-    outflows: OutflowsDrawer
+    outflows: OutflowsDrawer,
+
+    /// Cached information for drawing goop amounts.
+    goop: GoopDrawer,
 }
 
 impl Drawer {
@@ -66,8 +69,9 @@ impl Drawer {
     {
         let map_drawer = MapDrawer::new(display, map)?;
         let outflows = OutflowsDrawer::new(display, map)?;
+        let goop = GoopDrawer::new(display, map)?;
 
-        Ok(Drawer { map: map_drawer, outflows })
+        Ok(Drawer { map: map_drawer, outflows, goop })
     }
 
     pub fn draw<G>(&self, frame: &mut Frame, state: &State<G>) -> Result<()>
@@ -75,6 +79,7 @@ impl Drawer {
     {
         let map_frame = MapFrame::new(frame, &state.map);
         self.map.draw(frame, &state.map, &map_frame)?;
+        self.goop.draw(frame, &state.nodes, &state.map, &map_frame)?;
         self.outflows.draw(frame, &state.nodes, &map_frame)?;
         Ok(())
     }
@@ -282,6 +287,193 @@ impl OutflowsDrawer {
                        &self.draw_params)
                 .chain_err(|| "drawing outflows")?;
         }
+
+        Ok(())
+    }
+}
+
+/// A point in texture space.
+#[derive(Copy, Clone, Debug)]
+struct TextureVert { texture: [f32; 2] }
+
+implement_vertex!(TextureVert, texture);
+
+/// Cached information about drawing the levels of goop present at each node.
+///
+/// We draw goop levels by placing a square (two triangles) on each node large
+/// enough to cover the largest goop circle we'd like to draw. We then pretend
+/// we have an infinite texture containing a circle of radius 1, and set the
+/// texture coordinates on each square to draw the circle sized appropriately.
+///
+/// We size circles so that their area is proportional to the amount of goop.
+/// This seems like the most intuitive visual indicator of amount. This means
+/// that the ratio of the radius of the largest circle we'll draw to the
+/// smallest is `sqrt(MAX_GOOP)`.
+///
+/// The trick is that there is no such texture: the fragment shader simply
+/// checks whether its pixel's texture coordinates are within 1 of the origin,
+/// colors the pixel if it is, and leaves the pixel transparent otherwise.
+///
+/// Actually, because we need circles of different colors, our imaginary texture
+/// has 4096 circles on it. The circle index is a 12-bit value, which we break
+/// into four groups of four bits to get R, G, and B values.
+///
+/// Since we need empty space around each unit circle so that we can draw them
+/// as small circles, they are spaced at `sqrt(MAX_GOOP)` intervals.<
+struct GoopDrawer {
+    /// Shader program for drawing goop.
+    program: Program,
+
+    /// Vertexes for the squares on each node, without texture coordinates.
+    /// These are a function of the map, and so are fixed from one frame to the
+    /// next. The vertices for node `i` are at `4*i .. 4*i + 4`, going
+    /// counterclockwise through the quadrants.
+    squares: VertexBuffer<GraphVert>,
+
+    /// Vertexes of the texture coordinates of each node's square. Parallel to
+    /// the `squares` vertex buffer. This is a "persistent" vertex buffer: its
+    /// contents change on each frame, based on goop levels.
+    textures: RefCell<VertexBuffer<TextureVert>>,
+
+    /// Index buffer for the squares on nodes. This is a function of the map,
+    /// and is fixed from one frame to the next. The triangles for node `i` are
+    /// at `6*i .. 6*i + 3` and `6*i + 3 .. 6*i + 6`.
+    indices: IndexBuffer<u32>,
+
+    /// Draw parameters for goop squares.
+    draw_params: DrawParameters<'static>,
+}
+
+
+/// Given an RGB triple, return the position in the texture of the center of the
+/// circle of radius one with that color.
+fn color_to_circle((r, g, b): (u8, u8, u8)) -> (f32, f32) {
+    // Take the upper four bits of each component, and combine them into a
+    // twelve-bit value.
+    let (r, g, b) = ((r >> 4) as u32, (g >> 4) as u32, (b >> 4) as u32);
+    let index = r << 8 | g << 4 | b;
+
+    // Space out the circles by sqrt(MAX_GOOP).
+    ((index + 1) as f32 * (MAX_GOOP as f32).sqrt(), 0.0)
+}
+
+/// A type that can be constructed from a coordinate pair.
+trait TwoD {
+    fn new(x: f32, y: f32) -> Self;
+}
+
+impl TwoD for GraphVert {
+    fn new(x: f32, y: f32) -> Self { GraphVert { point: [x, y] } }
+}
+
+impl TwoD for TextureVert {
+    fn new(x: f32, y: f32) -> Self { TextureVert { texture: [x, y] } }
+}
+
+// Push onto the end of `vec` the coordinates of the corners of an
+// axis-aligned square with the given `center` and a side length of `2 *
+// radius`. The corners are pushed in counterclockwise order, starting
+// in the first quadrant.
+fn push_corners<T: TwoD>(vec: &mut Vec<T>, center: (f32, f32), radius: f32) {
+    vec.push(T::new(center.0 + radius, center.1 + radius));
+    vec.push(T::new(center.0 - radius, center.1 + radius));
+    vec.push(T::new(center.0 - radius, center.1 - radius));
+    vec.push(T::new(center.0 + radius, center.1 - radius));
+}
+
+
+impl GoopDrawer {
+    fn new<G>(display: &Facade, map: &Map<G>) -> Result<GoopDrawer>
+        where G: VisibleGraph
+    {
+        let program = Program::from_source(display,
+                                           include_str!("goop.vert"),
+                                           include_str!("goop.frag"),
+                                           None)
+            .chain_err(|| "compiling outflow shaders")?;
+
+        let graph = &map.graph;
+
+        // Don't take up the node's full area.
+        let radius = graph.radius() * 0.8;
+
+        let mut squares = Vec::with_capacity(graph.nodes() * 4);
+        for node in 0 .. graph.nodes() {
+            let GraphPt(x, y) = graph.center(node);
+            push_corners(&mut squares, (x, y), radius);
+        }
+        let squares = VertexBuffer::new(display, &squares)
+            .chain_err(|| "building vertex buffer for goop squares")?;
+
+        let textures = VertexBuffer::empty_persistent(display, squares.len())
+            .chain_err(|| "allocating vertex buffer for goop textures")?;
+
+        let mut indices = Vec::with_capacity(graph.nodes() * 6);
+        for node in 0 .. graph.nodes() {
+            // Index of `node`'s first vertex in `squares` and in `textures`.
+            let base = node * 4;
+
+            // Upper-left triangle.
+            indices.push((base + 0) as u32);
+            indices.push((base + 1) as u32);
+            indices.push((base + 2) as u32);
+
+            // Lower-right triangle.
+            indices.push((base + 2) as u32);
+            indices.push((base + 3) as u32);
+            indices.push((base + 0) as u32);
+        }
+        let indices = IndexBuffer::new(display,
+                                       PrimitiveType::TrianglesList,
+                                       &indices)
+            .chain_err(|| "allocating goop index buffer")?;
+
+        let draw_params = Default::default();
+
+        Ok(GoopDrawer { program, squares,
+                        textures: RefCell::new(textures),
+                        indices, draw_params })
+    }
+
+    fn draw<G>(&self, frame: &mut Frame, nodes: &[Option<OwnedNode>], map: &Map<G>, map_frame: &MapFrame)
+            -> Result<()>
+        where G: VisibleGraph
+    {
+        assert_eq!(nodes.len(), map.graph.nodes());
+
+        let mut textures = Vec::with_capacity(nodes.len() * 4);
+        for state in nodes {
+            match state {
+                &Some(ref owned) if owned.goop > 0 => {
+                    // Find the center of the circle of this player's color.
+                    let center = color_to_circle(map.player_colors[owned.player.0]);
+
+                    // Compute the radius of a circle whose area is MAX_GOOP
+                    // if a unit circle has an area of `goop`.
+                    let max_radius = (MAX_GOOP as f32 / owned.goop as f32).sqrt();
+
+                    push_corners(&mut textures, center, max_radius);
+                }
+                _ => {
+                    // This node holds no goop. Set its texture coordinates to
+                    // refer to a blank part of the texture. The shader ensures
+                    // that everything to the left of the y axis is blank.
+                    push_corners(&mut textures, (-2.0, 0.0), 1.0);
+                }
+            }
+        }
+        assert_eq!(textures.len(), textures.capacity());
+
+        self.textures.borrow_mut().write(&textures);
+        frame.draw((&self.squares, &*self.textures.borrow()),
+                   &self.indices,
+                   &self.program,
+                   &uniform! {
+                       graph_to_device: map_frame.graph_to_device,
+                       circle_spacing: (MAX_GOOP as f32).sqrt()
+                   },
+                   &self.draw_params)
+            .chain_err(|| "drawing goop")?;
 
         Ok(())
     }
