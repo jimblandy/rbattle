@@ -77,22 +77,8 @@ impl Drawer {
     pub fn draw<G>(&self, frame: &mut Frame, state: &State<G>) -> Result<()>
         where G: VisibleGraph
     {
-        let map_frame = MapFrame::new(frame, &state.map);
-        self.map.draw(frame, &state.map, &map_frame)?;
-        self.goop.draw(frame, &state.nodes, &state.map, &map_frame)?;
-        self.outflows.draw(frame, &state.nodes, &map_frame)?;
-        Ok(())
-    }
-}
+        let map = &*state.map;
 
-/// Information about the map computed afresh for each frame,
-/// needed for anything that draws things on the map.
-struct MapFrame {
-    graph_to_device: [[f32; 3]; 3]
-}
-
-impl MapFrame {
-    fn new<G: VisibleGraph>(frame: &mut Frame, map: &Map<G>) -> MapFrame {
         // Compute the aspect ratio of the window (the "device"), assuming
         // square pixels.
         let (width, height) = frame.get_dimensions();
@@ -112,7 +98,10 @@ impl MapFrame {
 
         let graph_to_device = compose(game_to_device, map.graph_to_game);
 
-        MapFrame { graph_to_device }
+        self.map.draw(frame, &graph_to_device, &state.map)?;
+        self.goop.draw(frame, &graph_to_device, &state.nodes, &state.map)?;
+        self.outflows.draw(frame, &graph_to_device, &state.nodes)?;
+        Ok(())
     }
 }
 
@@ -184,12 +173,12 @@ impl MapDrawer {
     ///
     /// The map `state` uses must be the same map that was passed to
     /// `MapDrawer::new` when this `MapDrawer` was created.
-    fn draw<G>(&self, frame: &mut Frame, _map: &Map<G>, map_frame: &MapFrame) -> Result<()>
+    fn draw<G>(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3],_map: &Map<G>) -> Result<()>
         where G: VisibleGraph
     {
         frame.draw(&self.vertices, &self.indices, &self.program,
                    &uniform! {
-                       graph_to_device: map_frame.graph_to_device
+                       graph_to_device: *to_device
                    },
                    &self.draw_params)
             .chain_err(|| "drawing map")?;
@@ -253,7 +242,7 @@ impl OutflowsDrawer {
         Ok(OutflowsDrawer { program, centers, indices: RefCell::new(indices), draw_params })
     }
 
-    fn draw(&self, frame: &mut Frame, nodes: &[Option<OwnedNode>], map_frame: &MapFrame)
+    fn draw(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<OwnedNode>])
                -> Result<()>
     {
         // Build indices for the goop flow lines we actually need to draw.
@@ -282,7 +271,7 @@ impl OutflowsDrawer {
                        self.indices.borrow().slice(0..indices.len()).unwrap(),
                        &self.program,
                        &uniform! {
-                           graph_to_device: map_frame.graph_to_device
+                           graph_to_device: *to_device
                        },
                        &self.draw_params)
                 .chain_err(|| "drawing outflows")?;
@@ -435,7 +424,7 @@ impl GoopDrawer {
                         indices, draw_params })
     }
 
-    fn draw<G>(&self, frame: &mut Frame, nodes: &[Option<OwnedNode>], map: &Map<G>, map_frame: &MapFrame)
+    fn draw<G>(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<OwnedNode>], map: &Map<G>)
             -> Result<()>
         where G: VisibleGraph
     {
@@ -469,7 +458,7 @@ impl GoopDrawer {
                    &self.indices,
                    &self.program,
                    &uniform! {
-                       graph_to_device: map_frame.graph_to_device,
+                       graph_to_device: *to_device,
                        circle_spacing: (MAX_GOOP as f32).sqrt()
                    },
                    &self.draw_params)
