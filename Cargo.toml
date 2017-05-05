@@ -6,3 +6,4 @@ authors = ["Jim Blandy <jimb@red-bean.com>"]
 [dependencies]
 error-chain = "0.10.0"
 glium = "0.16.0"
+rand = "0.3.15"

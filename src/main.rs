@@ -3,11 +3,9 @@
 // `error_chain!` can recurse deeply
 #![recursion_limit = "1024"]
 
-#[macro_use]
-extern crate error_chain;
-
-#[macro_use]
-extern crate glium;
+#[macro_use] extern crate error_chain;
+#[macro_use] extern crate glium;
+extern crate rand;
 
 #[cfg(test)]
 #[macro_use]
@@ -28,11 +26,12 @@ use map::{Map, Player};
 use square::SquareGrid;
 use state::{MAX_GOOP, OwnedNode, State};
 
-use glium::glutin::Event;
+use glium::glutin::{Event, ElementState, VirtualKeyCode};
 use glium::Surface;
 
 use std::iter::repeat;
 use std::rc::Rc;
+use std::time::{Duration, Instant};
 
 // This only gives access within this module. Make this `pub use errors::*;`
 // instead if the types must be accessible from other modules (e.g., within
@@ -70,7 +69,7 @@ fn run() -> Result<()> {
         .chain_err(|| "unable to open window")?;
 
     let graph = SquareGrid::new(15, 15);
-    let sources = vec![];
+    let sources = vec![16, 45];
     let colors = vec![(0x9f, 0x20, 0xb1), (0xb1, 0x20, 0x44),
                       (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1),
                       (0xe0, 0x6f, 0x3a)];
@@ -78,29 +77,34 @@ fn run() -> Result<()> {
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
 
-    let mut victim = 0;
-    let mut wait = 0;
+    let mut state = State::new(map.clone(),
+                               repeat(None).take(map.graph.nodes()).collect());
+
+    state.nodes[45] = Some(OwnedNode {
+        player: Player(2),
+        outflows: map.graph.neighbors(45),
+        goop: MAX_GOOP
+    });
+
+    state.nodes[30] = Some(OwnedNode {
+        player: Player(2),
+        outflows: vec![15],
+        goop: 0
+    });
+
+    state.nodes[16] = Some(OwnedNode {
+        player: Player(0),
+        outflows: map.graph.neighbors(16),
+        goop: MAX_GOOP
+    });
+
+    state.nodes[17] = Some(OwnedNode {
+        player: Player(1),
+        outflows: vec![],
+        goop: 2
+    });
+
     loop {
-        let mut state = State {
-            map: map.clone(),
-            nodes: repeat(None).take(map.graph.nodes()).collect()
-        };
-
-        state.nodes[victim] = Some(OwnedNode {
-            player: Player(victim % 5),
-            outflows: map.graph.neighbors(victim),
-            goop: wait
-        });
-
-        wait += 1;
-        if wait > MAX_GOOP {
-            wait = 0;
-            victim += 14;
-            while victim >= map.graph.nodes() {
-                victim -= map.graph.nodes();
-            }
-        }
-
         let mut frame = display.draw();
         frame.clear_color(1.0, 1.0, 1.0, 1.0);
         let status = drawer.draw(&mut frame, &state);
@@ -112,8 +116,14 @@ fn run() -> Result<()> {
         for event in display.poll_events() {
             match event {
                 Event::Closed => return Ok(()),
+                Event::KeyboardInput(ElementState::Pressed, _,
+                                     Some(VirtualKeyCode::Space)) => {
+                    state.flow();
+                    state.generate_goop();
+                }
                 _ => ()
             }
         }
+
     }
 }
