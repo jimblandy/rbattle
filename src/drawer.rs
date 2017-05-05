@@ -342,8 +342,8 @@ fn color_to_circle((r, g, b): (u8, u8, u8)) -> (f32, f32) {
     let (r, g, b) = ((r >> 4) as u32, (g >> 4) as u32, (b >> 4) as u32);
     let index = r << 8 | g << 4 | b;
 
-    // Space out the circles by sqrt(MAX_GOOP).
-    ((index + 1) as f32 * (MAX_GOOP as f32).sqrt(), 0.0)
+    // Space out the circles by MAX_GOOP, just to be safe.
+    ((index + 1) as f32 * (MAX_GOOP as f32), 0.0)
 }
 
 /// A type that can be constructed from a coordinate pair.
@@ -459,7 +459,7 @@ impl GoopDrawer {
                    &self.program,
                    &uniform! {
                        graph_to_device: *to_device,
-                       circle_spacing: (MAX_GOOP as f32).sqrt()
+                       circle_spacing: (MAX_GOOP as f32)
                    },
                    &self.draw_params)
             .chain_err(|| "drawing goop")?;
