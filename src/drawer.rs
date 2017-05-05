@@ -446,8 +446,9 @@ impl GoopDrawer {
                 _ => {
                     // This node holds no goop. Set its texture coordinates to
                     // refer to a blank part of the texture. The shader ensures
-                    // that everything to the left of the y axis is blank.
-                    push_corners(&mut textures, (-2.0, 0.0), 1.0);
+                    // that the leftmost circle is at the origin, so everything
+                    // to the left of the y axis is blank.
+                    push_corners(&mut textures, (-(MAX_GOOP as f32), 0.0), 1.0);
                 }
             }
         }

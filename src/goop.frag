@@ -10,14 +10,13 @@ in vec2 frag_texture;
 uniform float circle_spacing;
 
 void main() {
-  // The portion of the plane to the left of the y axis we leave alone.
-  if (frag_texture.x < 0)
+  // The portion of the plane off to the left of the y axis we leave alone.
+  if (frag_texture.x < -circle_spacing)
     discard;
 
-  // Which circle are we on? Since we want to stay off the y axis, the
-  // first circle is numbered 1.
+  // Which circle are we on?
   int circle = int(frag_texture.x / circle_spacing + 0.5);
-  if (circle < 1 || circle > 4096) {
+  if (circle < 0 || circle >= 4096) {
     color = vec4(1, 1, 0, 1); // yellow: circle number out of range.
     return;
   }
@@ -30,10 +29,9 @@ void main() {
   if (length(frag_circle) > 1)
     discard;
 
-  // The circle index is between 1 and 4096. Subtract one and treat it as a
-  // twelve-bit number, break it into three groups of four bits each, and treat
-  // them as the red, green, and blue values.
-  circle -= 1;
+  // The circle index is between 0 and 4095. Treat it as a twelve-bit number,
+  // break it into three groups of four bits each, and treat them as the red,
+  // green, and blue values.
   float red = circle >> 8;
   float blue = (circle >> 4) & 0xf;
   float green = circle & 0xf;
