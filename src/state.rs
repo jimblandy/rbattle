@@ -144,4 +144,10 @@ impl<G: VisibleGraph> State<G> {
     }
 }
 
+/// Actions that can be taken on a `State`.
+pub enum Action {
+    /// Toggle the state of the given outflow.
+    ToggleOutflow((Node, Node)),
+}
+
 

@@ -16,6 +16,7 @@ mod errors;
 mod graph;
 mod map;
 mod math;
+mod mouse;
 mod square;
 mod state;
 mod visible_graph;

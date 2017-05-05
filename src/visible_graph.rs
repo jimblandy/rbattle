@@ -74,6 +74,13 @@ pub trait VisibleGraph: Graph {
     /// Determine which boundary line a mouse click on the point `(x, y)` refers
     /// to. If it refers to a boundary line between two nodes, return them.
     /// Otherwise, return `None`.
+    ///
+    /// An additional restriction: a VisibleGraph must always identify a
+    /// particular boundary line using the two `Node` elements *in the same
+    /// order*. That is, it can't return `(3,4)` from one call, and then `(4,3)`
+    /// from another call. Typical implementations satisfy this naturally, but
+    /// when that isn't the case, the implementation can simply ensure that the
+    /// lower node number always comes first.
     fn boundary_hit(&self, &GraphPt) -> Option<(Node, Node)>;
 }
 
