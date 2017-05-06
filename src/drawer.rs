@@ -33,12 +33,12 @@ use errors::*;
 use map::Map;
 use state::{State, MAX_GOOP, Occupied};
 use math::{compose, inverse, scale_transform, translate_transform};
+use mouse::{Mouse, Display, OutflowState};
 use visible_graph::{GraphPt, VisibleGraph};
 
-use glium::{DrawParameters, Frame, IndexBuffer, Program, Surface, VertexBuffer};
+use glium::{Blend, DrawParameters, Frame, IndexBuffer, Program, Surface, VertexBuffer};
 use glium::backend::Facade;
-use glium::index::PrimitiveType;
-//use glium::vertex::Vertex;
+use glium::index::{NoIndices, PrimitiveType};
 
 use std::cell::RefCell;
 
@@ -61,6 +61,9 @@ pub struct Drawer {
 
     /// Cached information for drawing goop amounts.
     goop: GoopDrawer,
+
+    /// Cached information for drawing mouse interaction.
+    mouse: MouseDrawer,
 }
 
 impl Drawer {
@@ -70,15 +73,19 @@ impl Drawer {
         let map_drawer = MapDrawer::new(display, map)?;
         let outflows = OutflowsDrawer::new(display, map)?;
         let goop = GoopDrawer::new(display, map)?;
+        let mouse = MouseDrawer::new(display, map)?;
 
-        Ok(Drawer { map: map_drawer, outflows, goop })
+        Ok(Drawer { map: map_drawer, outflows, goop, mouse })
     }
 
     /// Draw `state` on `frame`
     ///
     /// Return the current transformation from window coordinates to game
     /// coordinates, for use by the controller.
-    pub fn draw<G>(&self, frame: &mut Frame, state: &State<G>) -> Result<[[f32; 3]; 3]>
+    pub fn draw<G>(&self,
+                   frame: &mut Frame,
+                   state: &State<G>,
+                   mouse: &Mouse<G>) -> Result<[[f32; 3]; 3]>
         where G: VisibleGraph
     {
         let map = &*state.map;
@@ -105,6 +112,7 @@ impl Drawer {
         self.map.draw(frame, &graph_to_device, &state.map)?;
         self.goop.draw(frame, &graph_to_device, &state.nodes, &state.map)?;
         self.outflows.draw(frame, &graph_to_device, &state.nodes)?;
+        self.mouse.draw(frame, &graph_to_device, state, mouse)?;
 
         // Compute the transformation from window coordinates (pixels) to game
         // coordinates, for the mouse handling to use. In window coordinates:
@@ -196,7 +204,7 @@ impl MapDrawer {
     ///
     /// The map `state` uses must be the same map that was passed to
     /// `MapDrawer::new` when this `MapDrawer` was created.
-    fn draw<G>(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3],_map: &Map<G>) -> Result<()>
+    fn draw<G>(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], _map: &Map<G>) -> Result<()>
         where G: VisibleGraph
     {
         frame.draw(&self.vertices, &self.indices, &self.program,
@@ -489,5 +497,94 @@ impl GoopDrawer {
             .chain_err(|| "drawing goop")?;
 
         Ok(())
+    }
+}
+
+/// Graphics state for drawing mouse interactions.
+///
+/// Our mouse interactions are pretty simple. The `mouse::Display` enum
+/// specifies what state the interface is in, and it's up to this type to decide
+/// what that state looks like:
+///
+/// - Hover(outflow): draw outflow in a light, transparent gray.
+///
+/// - Active(outflow): Draw outflow in a solid yellow.
+struct MouseDrawer {
+    /// Shader program for drawing outflows being clicked upon.
+    program: Program,
+
+    /// Vertexes of the outflow.
+    outflow: RefCell<VertexBuffer<GraphVertex>>,
+}
+
+impl MouseDrawer {
+    fn new<G>(display: &Facade, _map: &Map<G>) -> Result<MouseDrawer>
+        where G: VisibleGraph
+    {
+        let program = Program::from_source(display,
+                                           include_str!("map.vert"),
+                                           include_str!("mouse.frag"),
+                                           None)
+            .chain_err(|| "compiling mouse shaders")?;
+
+        let outflow = VertexBuffer::empty_persistent(display, 2)
+            .chain_err(|| "allocating mouse vertex buffer")?;
+
+        Ok(MouseDrawer { program, outflow: RefCell::new(outflow) })
+    }
+
+    fn draw<G: VisibleGraph>(&self, frame: &mut Frame,
+                             to_device: &[[f32; 3]; 3],
+                             state: &State<G>,
+                             mouse: &Mouse<G>) -> Result<()>
+    {
+        match mouse.display(state) {
+            Display::Nothing => Ok(()),
+
+            Display::Outflow { nodes: (from, to), state: outflow_state } => {
+                // Prepare the vertices.
+                let graph = &state.map.graph;
+                let GraphPt(from_x, from_y) = graph.center(from);
+                let GraphPt(to_x, to_y) = graph.center(to);
+                let outflow = [GraphVertex { point: [from_x, from_y] },
+                               GraphVertex { point: [to_x, to_y] }];
+                self.outflow.borrow_mut().write(&outflow);
+
+                match outflow_state {
+                    OutflowState::Hover => {
+                        frame.draw(&*self.outflow.borrow(),
+                                   &NoIndices(PrimitiveType::LinesList),
+                                   &self.program,
+                                   &uniform! {
+                                       graph_to_device: *to_device,
+                                       // transparent black
+                                       color: [0.0_f32, 0.0, 0.0, 0.5],
+                                   },
+                                   &DrawParameters {
+                                       line_width: Some(5.0),
+                                       blend: Blend::alpha_blending(),
+                                       .. Default::default()
+                                   })
+                            .chain_err(|| "drawing hover mouse outflow")
+                    }
+
+                    OutflowState::Active => {
+                        frame.draw(&*self.outflow.borrow(),
+                                   NoIndices(PrimitiveType::LinesList),
+                                   &self.program,
+                                   &uniform! {
+                                       graph_to_device: *to_device,
+                                       // yellow
+                                       color: [0.94_f32, 0.96, 0.0, 1.0],
+                                   },
+                                   &DrawParameters {
+                                       line_width: Some(5.0),
+                                       .. Default::default()
+                                   })
+                            .chain_err(|| "drawing active mouse outflow")
+                    }
+                }
+            }
+        }
     }
 }

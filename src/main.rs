@@ -111,7 +111,7 @@ fn run() -> Result<()> {
     loop {
         let mut frame = display.draw();
         frame.clear_color(1.0, 1.0, 1.0, 1.0);
-        let status = drawer.draw(&mut frame, &state);
+        let status = drawer.draw(&mut frame, &state, &mouse);
         frame.finish()
             .chain_err(|| "drawing finish failed")?;
 

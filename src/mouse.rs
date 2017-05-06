@@ -83,25 +83,26 @@ impl<G: VisibleGraph> Mouse<G> {
 
     /// Given `state`, choose how to display the interactive parts of the game
     /// grid.
-    pub fn display(&self, _state: &State<G>) -> Option<Display> {
+    pub fn display(&self, _state: &State<G>) -> Display {
         match (self.click, self.position) {
             // We're over something we're not clicking on.
-            (None, Affordance::Outflow(pos)) => Some(Display::Hover(pos)),
+            (None, Affordance::Outflow(pos)) =>
+                Display::Outflow { nodes: pos, state: OutflowState::Hover },
 
             (Some(Affordance::Outflow(cpos)), Affordance::Outflow(mpos)) => {
                 if cpos == mpos {
                     // We're clicking on something that we're still over.
-                    Some(Display::Active(cpos))
+                    Display::Outflow { nodes: cpos, state: OutflowState::Active }
                 } else {
                     // We clicked on one thing, but moved elsewhere. This is
                     // arguably a distinct state, but treat it like a hover
                     // that's stuck on the click position.
-                    Some(Display::Hover(cpos))
+                    Display::Outflow { nodes: cpos, state: OutflowState::Hover }
                 }
             }
 
             // Otherwise, no action.
-            _ => None
+            _ => Display::Nothing
         }
     }
 }
@@ -109,12 +110,20 @@ impl<G: VisibleGraph> Mouse<G> {
 /// How to display the current mouse state. This is always computed as a
 /// function of some pair of `State` and `Mouse` values.
 pub enum Display {
-    /// Draw the given outflow as something one could click on. (The mouse is
+    Nothing,
+
+    /// We're going to highlight an outflow.
+    Outflow { nodes: (Node, Node), state: OutflowState }
+}
+
+/// How to highlight an outflow.
+pub enum OutflowState {
+    /// Draw the outflow as something one could click on. (The mouse is
     /// hovering over it, or was clicked on it but moved off without being
     /// released.)
-    Hover((Node, Node)),
+    Hover,
 
-    /// Draw the given outflow as being clicked upon, but not yet released.
+    /// Draw the outflow as being clicked upon, but not yet released.
     /// (The mouse was clicked on it, and is still over it.)
-    Active((Node, Node)),
+    Active
 }
