@@ -32,7 +32,7 @@
 use errors::*;
 use map::Map;
 use state::{State, MAX_GOOP, OwnedNode};
-use math::{compose, scale_transform};
+use math::{compose, inverse, scale_transform, translate_transform};
 use visible_graph::{GraphPt, VisibleGraph};
 
 use glium::{DrawParameters, Frame, IndexBuffer, Program, Surface, VertexBuffer};
@@ -74,7 +74,11 @@ impl Drawer {
         Ok(Drawer { map: map_drawer, outflows, goop })
     }
 
-    pub fn draw<G>(&self, frame: &mut Frame, state: &State<G>) -> Result<()>
+    /// Draw `state` on `frame`
+    ///
+    /// Return the current transformation from window coordinates to game
+    /// coordinates, for use by the controller.
+    pub fn draw<G>(&self, frame: &mut Frame, state: &State<G>) -> Result<[[f32; 3]; 3]>
         where G: VisibleGraph
     {
         let map = &*state.map;
@@ -101,7 +105,26 @@ impl Drawer {
         self.map.draw(frame, &graph_to_device, &state.map)?;
         self.goop.draw(frame, &graph_to_device, &state.nodes, &state.map)?;
         self.outflows.draw(frame, &graph_to_device, &state.nodes)?;
-        Ok(())
+
+        // Compute the transformation from window coordinates (pixels) to game
+        // coordinates, for the mouse handling to use. In window coordinates:
+        //
+        // - The positive y axis points down, not up.
+        // - The origin is at the upper left, not in the center.
+        // - Values range from (0,0) to (width,height), not (-1,-1) to (1,1).
+        //
+        // We compute this in two steps: first the transformation from window
+        // coordinates to normalized device coordinates, and then the
+        // transformation from there to game coordinates.
+        let window_to_device
+            = compose(translate_transform(-1.0, 1.0),
+                      scale_transform(2.0 / (width as f32), -2.0 / (height as f32)));
+        let device_to_game = inverse(game_to_device)
+            .expect("graph_to_game transformation should be invertible");
+
+        let window_to_game = compose(device_to_game, window_to_device);
+
+        Ok(window_to_game)
     }
 }
 
