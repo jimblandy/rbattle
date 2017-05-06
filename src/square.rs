@@ -191,7 +191,7 @@ impl VisibleGraph for SquareGrid {
         // Exclude points further than this from the side of a node, or nearer
         // than this to a square corner. Clearly, this must be less than 0.5, to
         // avoid ambiguity.
-        const TOLERANCE: f32 = 0.2;
+        const TOLERANCE: f32 = 0.3;
 
         // Exclude points outside the grid altogether, or on the outer edges.
         // This lets us assume that every hit we find is an interior boundary,
