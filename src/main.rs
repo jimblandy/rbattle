@@ -24,10 +24,13 @@ mod visible_graph;
 use drawer::Drawer;
 use graph::Graph;
 use map::{Map, Player};
+use math::{apply, compose};
+use mouse::Mouse;
 use square::SquareGrid;
 use state::{MAX_GOOP, OwnedNode, State};
+use visible_graph::GraphPt;
 
-use glium::glutin::{Event, ElementState, VirtualKeyCode};
+use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
 use glium::Surface;
 
 use std::rc::Rc;
@@ -103,6 +106,8 @@ fn run() -> Result<()> {
         goop: 2
     });
 
+    let mut mouse = Mouse::new(map.clone());
+
     loop {
         let mut frame = display.draw();
         frame.clear_color(1.0, 1.0, 1.0, 1.0);
@@ -110,7 +115,8 @@ fn run() -> Result<()> {
         frame.finish()
             .chain_err(|| "drawing finish failed")?;
 
-        status?;
+        let window_to_game = status?;
+        let window_to_graph = compose(map.game_to_graph, window_to_game);
 
         for event in display.poll_events() {
             match event {
@@ -119,6 +125,18 @@ fn run() -> Result<()> {
                                      Some(VirtualKeyCode::Space)) => {
                     state.flow();
                     state.generate_goop();
+                }
+                Event::MouseMoved(x, y) => {
+                    let graph_pos = apply(window_to_graph, [x as f32, y as f32]);
+                    mouse.move_to(GraphPt(graph_pos[0], graph_pos[1]));
+                }
+                Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
+                    mouse.click();
+                }
+                Event::MouseInput(ElementState::Released, MouseButton::Left) => {
+                    if let Some(action) = mouse.release() {
+                        state.take_action(action);
+                    }
                 }
                 _ => ()
             }

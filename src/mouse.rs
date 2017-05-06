@@ -42,8 +42,12 @@ enum Affordance {
 }
 
 impl<G: VisibleGraph> Mouse<G> {
+    pub fn new(map: Rc<Map<G>>) -> Mouse<G> {
+        Mouse { map, position: Affordance::Nothing, click: None }
+    }
+
     /// Report that the mouse moved to `pos` in graph space coordinates.
-    fn move_to(&mut self, pos: GraphPt) {
+    pub fn move_to(&mut self, pos: GraphPt) {
         self.position = match self.map.graph.boundary_hit(&pos) {
             Some(pos) => Affordance::Outflow(pos),
             None => Affordance::Nothing
@@ -51,13 +55,13 @@ impl<G: VisibleGraph> Mouse<G> {
     }
 
     /// The main mouse button was clicked at the last reported position.
-    fn click(&mut self) {
+    pub fn click(&mut self) {
         self.click = Some(self.position);
     }
 
     /// The main mouse button was released. This may return an action to carry
     /// out on the state.
-    fn release(&mut self) -> Option<Action> {
+    pub fn release(&mut self) -> Option<Action> {
         match self.click.take() {
             // If we get a release with no click, ignore.
             None => None,
@@ -79,7 +83,7 @@ impl<G: VisibleGraph> Mouse<G> {
 
     /// Given `state`, choose how to display the interactive parts of the game
     /// grid.
-    fn display(&self, _state: &State<G>) -> Option<Display> {
+    pub fn display(&self, _state: &State<G>) -> Option<Display> {
         match (self.click, self.position) {
             // We're over something we're not clicking on.
             (None, Affordance::Outflow(pos)) => Some(Display::Hover(pos)),
