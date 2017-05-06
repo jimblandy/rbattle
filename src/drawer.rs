@@ -133,7 +133,7 @@ struct MapDrawer {
     program: Program,
 
     /// Vertexes of the graph's boundary lines.
-    vertices: VertexBuffer<GraphVert>,
+    vertices: VertexBuffer<GraphVertex>,
 
     /// Indices for the graph's boundary lines.
     indices: IndexBuffer<u32>,
@@ -155,9 +155,9 @@ impl MapDrawer {
             .chain_err(|| "compiling map shaders")?;
 
         // It's a little annoying that we have to do this map to convert GraphPt
-        // to GraphVert, but I'd rather do this than a transmute.
-        let vertices: Vec<GraphVert> = graph.endpoints().into_iter()
-            .map(|point| GraphVert { point: [point.0, point.1] })
+        // to GraphVertex, but I'd rather do this than a transmute.
+        let vertices: Vec<GraphVertex> = graph.endpoints().into_iter()
+            .map(|point| GraphVertex { point: [point.0, point.1] })
             .collect();
         let vertices = VertexBuffer::new(display, &vertices)
             .chain_err(|| "building buffer for graph vertices")?;
@@ -212,16 +212,16 @@ impl MapDrawer {
 
 /// A vertex in Graph space.
 #[derive(Copy, Clone, Debug)]
-struct GraphVert { point: [f32; 2] }
+struct GraphVertex { point: [f32; 2] }
 
-implement_vertex!(GraphVert, point);
+implement_vertex!(GraphVertex, point);
 
 struct OutflowsDrawer {
     /// Shader program for drawing the outflows.
     program: Program,
 
     /// Vertexes of the nodes' center positions.
-    centers: VertexBuffer<GraphVert>,
+    centers: VertexBuffer<GraphVertex>,
 
     /// Index buffer for outflows. This is a "persistent" index buffer, updated
     /// once per frame.
@@ -243,10 +243,10 @@ impl OutflowsDrawer {
                                            None)
             .chain_err(|| "compiling outflow shaders")?;
 
-        let centers: Vec<GraphVert> = (0..graph.nodes())
+        let centers: Vec<GraphVertex> = (0..graph.nodes())
             .map(|node| {
                 let GraphPt(x, y) = graph.center(node);
-                GraphVert { point: [x, y] }
+                GraphVertex { point: [x, y] }
             })
             .collect();
         let centers = VertexBuffer::new(display, &centers)
@@ -304,18 +304,18 @@ impl OutflowsDrawer {
     }
 }
 
-/// A point in texture space.
+/// A point in UV space. A parameter passed to fragment shaders.
 #[derive(Copy, Clone, Debug)]
-struct TextureVert { texture: [f32; 2] }
+struct UVVertex { vertex_uv: [f32; 2] }
 
-implement_vertex!(TextureVert, texture);
+implement_vertex!(UVVertex, vertex_uv);
 
 /// Cached information about drawing the levels of goop present at each node.
 ///
 /// We draw goop levels by placing a square (two triangles) on each node large
 /// enough to cover the largest goop circle we'd like to draw. We then pretend
-/// we have an infinite texture containing a circle of radius 1, and set the
-/// texture coordinates on each square to draw the circle sized appropriately.
+/// we have a texture containing a circle of radius 1, and set the texture
+/// coordinates on the squares vertices to draw the circle sized appropriately.
 ///
 /// We size circles so that their area is proportional to the amount of goop.
 /// This seems like the most intuitive visual indicator of amount. This means
@@ -340,12 +340,12 @@ struct GoopDrawer {
     /// These are a function of the map, and so are fixed from one frame to the
     /// next. The vertices for node `i` are at `4*i .. 4*i + 4`, going
     /// counterclockwise through the quadrants.
-    squares: VertexBuffer<GraphVert>,
+    squares: VertexBuffer<GraphVertex>,
 
     /// Vertexes of the texture coordinates of each node's square. Parallel to
     /// the `squares` vertex buffer. This is a "persistent" vertex buffer: its
     /// contents change on each frame, based on goop levels.
-    textures: RefCell<VertexBuffer<TextureVert>>,
+    textures: RefCell<VertexBuffer<UVVertex>>,
 
     /// Index buffer for the squares on nodes. This is a function of the map,
     /// and is fixed from one frame to the next. The triangles for node `i` are
@@ -374,12 +374,12 @@ trait TwoD {
     fn new(x: f32, y: f32) -> Self;
 }
 
-impl TwoD for GraphVert {
-    fn new(x: f32, y: f32) -> Self { GraphVert { point: [x, y] } }
+impl TwoD for GraphVertex {
+    fn new(x: f32, y: f32) -> Self { GraphVertex { point: [x, y] } }
 }
 
-impl TwoD for TextureVert {
-    fn new(x: f32, y: f32) -> Self { TextureVert { texture: [x, y] } }
+impl TwoD for UVVertex {
+    fn new(x: f32, y: f32) -> Self { UVVertex { vertex_uv: [x, y] } }
 }
 
 // Push onto the end of `vec` the coordinates of the corners of an
