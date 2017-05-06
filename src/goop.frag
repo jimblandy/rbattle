@@ -19,11 +19,10 @@
 //
 // The shader "simulates an image" in that there is no actual bitmap containing
 // these circles stored anywhere. Instead, given the coordinates of a point on
-// the image, we simply calculate the color of that point using arithmetic. This
-// gives the image a very fine resolution (up to the limit of the floating-point
-// calculations) in very little space (just the code for the shader), at the
-// expense of more calculation per pixel. This is still well within the budget
-// of most modern GPUs.
+// the image, we simply calculate its color in code. This gives the image a very
+// fine resolution (up to the limit of the floating-point calculations) in very
+// little space (just the code for the shader), at the expense of more
+// calculation per pixel. This is still well within the budget of modern GPUs.
 
 #version 150
 
