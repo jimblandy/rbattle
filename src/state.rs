@@ -21,6 +21,8 @@ use map::{Map, Player};
 use std::rc::Rc;
 use rand::{Rng, SeedableRng, XorShiftRng};
 
+use std::iter::repeat;
+
 /// The complete state of an RBattle game board.
 #[derive(Clone)]
 pub struct State<G: VisibleGraph> {
@@ -65,8 +67,9 @@ fn index_mut_pair<T>(slice: &mut [T], i: usize, j: usize) -> (&mut T, &mut T) {
 }
 
 impl<G: VisibleGraph> State<G> {
-    pub fn new(map: Rc<Map<G>>, nodes: Vec<Option<OwnedNode>>) -> State<G> {
+    pub fn new(map: Rc<Map<G>>) -> State<G> {
         const SEED: [u32; 4] = [0xcd9d5eaa, 0xf04bc9a7, 0x4602cc70, 0x98d01ef9];
+        let nodes = repeat(None).take(map.graph.nodes()).collect();
         State { map, nodes, rng: XorShiftRng::from_seed(SEED) }
     }
 

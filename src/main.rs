@@ -30,7 +30,6 @@ use state::{MAX_GOOP, OwnedNode, State};
 use glium::glutin::{Event, ElementState, VirtualKeyCode};
 use glium::Surface;
 
-use std::iter::repeat;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -78,8 +77,7 @@ fn run() -> Result<()> {
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
 
-    let mut state = State::new(map.clone(),
-                               repeat(None).take(map.graph.nodes()).collect());
+    let mut state = State::new(map.clone());
 
     state.nodes[45] = Some(OwnedNode {
         player: Player(2),
