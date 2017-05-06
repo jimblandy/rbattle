@@ -101,7 +101,7 @@ impl<G: VisibleGraph> State<G> {
                 (&mut None, _) => panic!("outflow from empty node"),
 
                 // Source has no goop. No effect.
-                (&mut Some(OwnedNode { goop, .. }), _) if goop == 0 => (),
+                (&mut Some(OwnedNode { goop: 0, .. }), _) => (),
 
                 // Goop flowing into an unoccupied node. New player claims ownership.
                 (&mut Some(OwnedNode { player, ref mut goop, .. }),
