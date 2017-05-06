@@ -27,7 +27,7 @@ use map::{Map, Player};
 use math::{apply, compose};
 use mouse::Mouse;
 use square::SquareGrid;
-use state::{MAX_GOOP, OwnedNode, State};
+use state::{MAX_GOOP, Occupied, State};
 use visible_graph::GraphPt;
 
 use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
@@ -82,25 +82,25 @@ fn run() -> Result<()> {
 
     let mut state = State::new(map.clone());
 
-    state.nodes[45] = Some(OwnedNode {
+    state.nodes[45] = Some(Occupied {
         player: Player(2),
         outflows: map.graph.neighbors(45),
         goop: MAX_GOOP
     });
 
-    state.nodes[30] = Some(OwnedNode {
+    state.nodes[30] = Some(Occupied {
         player: Player(2),
         outflows: vec![15],
         goop: 0
     });
 
-    state.nodes[16] = Some(OwnedNode {
+    state.nodes[16] = Some(Occupied {
         player: Player(0),
         outflows: map.graph.neighbors(16),
         goop: MAX_GOOP
     });
 
-    state.nodes[17] = Some(OwnedNode {
+    state.nodes[17] = Some(Occupied {
         player: Player(1),
         outflows: vec![],
         goop: 2

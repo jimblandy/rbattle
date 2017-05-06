@@ -29,16 +29,16 @@ pub struct State<G: VisibleGraph> {
     /// The map being played on.
     pub map: Rc<Map<G>>,
 
-    /// Which nodes are owned, and which are vacant. Indexed by node id.
-    pub nodes: Vec<Option<OwnedNode>>,
+    /// Which nodes are occupied, and which are vacant. Indexed by node id.
+    pub nodes: Vec<Option<Occupied>>,
 
     /// The random number generator used to drive the goop flow algorithm.
     rng: XorShiftRng,
 }
 
-/// The state of a node that is owned by some player.
+/// The state of a node that is occupied by some player.
 #[derive(Debug, Clone)]
-pub struct OwnedNode {
+pub struct Occupied {
     /// The player who controls this node.
     pub player: Player,
 
@@ -83,8 +83,8 @@ impl<G: VisibleGraph> State<G> {
         // Build a vector of (from, to) pairs.
         let mut outflow_list = Vec::new();
         for node in 0..self.map.graph.nodes() {
-            if let &Some(ref owned) = &self.nodes[node] {
-                for &outflow in &owned.outflows {
+            if let &Some(ref occupied) = &self.nodes[node] {
+                for &outflow in &occupied.outflows {
                     outflow_list.push((node, outflow))
                 }
             }
@@ -101,18 +101,18 @@ impl<G: VisibleGraph> State<G> {
                 (&mut None, _) => panic!("outflow from empty node"),
 
                 // Source has no goop. No effect.
-                (&mut Some(OwnedNode { goop: 0, .. }), _) => (),
+                (&mut Some(Occupied { goop: 0, .. }), _) => (),
 
                 // Goop flowing into an unoccupied node. New player claims ownership.
-                (&mut Some(OwnedNode { player, ref mut goop, .. }),
+                (&mut Some(Occupied { player, ref mut goop, .. }),
                  &mut ref mut to @ None) => {
                     *goop -= 1;
-                    *to = Some(OwnedNode { player, outflows: vec![], goop: 1 });
+                    *to = Some(Occupied { player, outflows: vec![], goop: 1 });
                 },
 
                 // Goop flowing into a node occupied by the same player.
-                (&mut Some(OwnedNode { player: from_player, goop: ref mut from_goop, .. }),
-                 &mut Some(OwnedNode { player: to_player,   goop: ref mut to_goop, .. }))
+                (&mut Some(Occupied { player: from_player, goop: ref mut from_goop, .. }),
+                 &mut Some(Occupied { player: to_player,   goop: ref mut to_goop, .. }))
                     if from_player == to_player =>
                 {
                     if *from_goop > 0 && *to_goop < MAX_GOOP {
@@ -123,8 +123,8 @@ impl<G: VisibleGraph> State<G> {
 
                 // Goop flowing into a node occupied by another player, but
                 // doesn't clear it. All outflow from destination stopped.
-                (&mut Some(OwnedNode { goop: ref mut from_goop, .. }),
-                 &mut Some(OwnedNode { outflows: ref mut to_outflows,
+                (&mut Some(Occupied { goop: ref mut from_goop, .. }),
+                 &mut Some(Occupied { outflows: ref mut to_outflows,
                                        goop:     ref mut to_goop, .. }))
                     if *to_goop > 1 =>
                 {
@@ -137,10 +137,10 @@ impl<G: VisibleGraph> State<G> {
                 },
 
                 // Goop flowing into an occupied node, succeeds in clearing it.
-                (&mut Some(OwnedNode { player, goop: ref mut from_goop, .. }),
+                (&mut Some(Occupied { player, goop: ref mut from_goop, .. }),
                  &mut ref mut to) => {
                     *from_goop -= 1;
-                    *to = Some(OwnedNode { player, outflows: vec![], goop: 0 });
+                    *to = Some(Occupied { player, outflows: vec![], goop: 0 });
                     // Since all outflow from `to` is cancelled, remove any
                     // pending pairs from `outflow_list`.
                     outflow_list.retain(|&(from, _)| from != to_index);
@@ -153,8 +153,8 @@ impl<G: VisibleGraph> State<G> {
     pub fn generate_goop(&mut self) {
         for &source in &self.map.sources {
             match &mut self.nodes[source] {
-                &mut None => panic!("source nodes should always be owned by someone"),
-                &mut Some(OwnedNode { ref mut goop, .. }) => {
+                &mut None => panic!("source nodes should always be occupied by someone"),
+                &mut Some(Occupied { ref mut goop, .. }) => {
                     if *goop < MAX_GOOP {
                         *goop += 1;
                     }

@@ -31,7 +31,7 @@
 
 use errors::*;
 use map::Map;
-use state::{State, MAX_GOOP, OwnedNode};
+use state::{State, MAX_GOOP, Occupied};
 use math::{compose, inverse, scale_transform, translate_transform};
 use visible_graph::{GraphPt, VisibleGraph};
 
@@ -265,15 +265,15 @@ impl OutflowsDrawer {
         Ok(OutflowsDrawer { program, centers, indices: RefCell::new(indices), draw_params })
     }
 
-    fn draw(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<OwnedNode>])
+    fn draw(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<Occupied>])
                -> Result<()>
     {
         // Build indices for the goop flow lines we actually need to draw.
         let mut indices = Vec::new();
         for (node, state) in nodes.iter().enumerate() {
             match state {
-                &Some(ref owned) => {
-                    for &outflow in &owned.outflows {
+                &Some(ref occupied) => {
+                    for &outflow in &occupied.outflows {
                         indices.push(node as u32);
                         indices.push(outflow as u32);
                     }
@@ -447,7 +447,7 @@ impl GoopDrawer {
                         indices, draw_params })
     }
 
-    fn draw<G>(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<OwnedNode>], map: &Map<G>)
+    fn draw<G>(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<Occupied>], map: &Map<G>)
             -> Result<()>
         where G: VisibleGraph
     {
@@ -456,13 +456,13 @@ impl GoopDrawer {
         let mut textures = Vec::with_capacity(nodes.len() * 4);
         for state in nodes {
             match state {
-                &Some(ref owned) if owned.goop > 0 => {
+                &Some(ref occupied) if occupied.goop > 0 => {
                     // Find the center of the circle of this player's color.
-                    let center = color_to_circle(map.player_colors[owned.player.0]);
+                    let center = color_to_circle(map.player_colors[occupied.player.0]);
 
                     // Compute the radius of a circle whose area is MAX_GOOP
                     // if a unit circle has an area of `goop`.
-                    let max_radius = (MAX_GOOP as f32 / owned.goop as f32).sqrt();
+                    let max_radius = (MAX_GOOP as f32 / occupied.goop as f32).sqrt();
 
                     push_corners(&mut textures, center, max_radius);
                 }
