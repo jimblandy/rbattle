@@ -1,3 +1,20 @@
+//! Module for the dynamic state of the game.
+//!
+//! This module defines the `State` type and its entourage. The data needed to
+//! run an RBattle game is split into three categories:
+//!
+//! - `State` holds all the significant varying state of a game. What changes as the game proceeds
+//!   are the amount of goop in each node, and the outflows the user has chosen;
+//!   these are the `State`.
+//!
+//! - The positions of nodes and their boundaries and the locations of goop
+//!   sources are all fixed, and are part of the `Map`.
+//!
+//! - Interface elements enter hover and active states as the user mouses
+//!   around, but those states are ephemeral; they are part of the `Mouse` type.
+//!   When the user actually completes an interaction with an interface element,
+//!   only then is the `State` affected.
+
 use graph::Node;
 use visible_graph::VisibleGraph;
 use map::{Map, Player};
