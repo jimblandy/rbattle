@@ -37,7 +37,8 @@ pub fn translate_transform(dx: f32, dy: f32) -> Matrix {
      [dx,  dy,  1.0]]
 }
 
-/// We don't need rotation in rbattle, but it'd be straightforward.
+// These sorts of modules usually also provide a rotation matrix, but we don't
+// need rotation in rbattle.
 
 /// A vector that can be extended to an [f32; 3] vector, and converted back.
 /// On `[f32; 3]` vectors, these are the identity function.
@@ -179,17 +180,3 @@ mod test {
                                 inverse(translate).unwrap())));
     }
 }
-
-// Proof that composing two matrices whose bottom row is [0, 0, 1] gives another
-// such matrix (just for my own sanity):
-//
-// Applying a 3x3 matrix whose bottom row is [0, 0, 1] to any vector [_, _, w]
-// always produces a vector [_, _, w]: all columns but the last have a zero in
-// the final row, so they contribute nothing to the result's final element; and
-// the last column is multiplied by the vector's w, and so contributes w to the
-// final element.
-//
-// When composing two 3x3 matrices whose bottom rows are [0, 0, 1], we apply the
-// first to each column of the second. The resulting columns thus end with 0, 0,
-// and 1. So composing two such matrices produces a matrix with the same bottom
-// row.
