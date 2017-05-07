@@ -194,5 +194,3 @@ pub enum Action {
     /// Toggle the state of the given outflow.
     ToggleOutflow((Node, Node)),
 }
-
-
