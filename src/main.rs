@@ -107,6 +107,7 @@ fn run() -> Result<()> {
     });
 
     let mut mouse = Mouse::new(map.clone());
+    let mut single_step = true;
 
     loop {
         let mut frame = display.draw();
@@ -123,8 +124,13 @@ fn run() -> Result<()> {
                 Event::Closed => return Ok(()),
                 Event::KeyboardInput(ElementState::Pressed, _,
                                      Some(VirtualKeyCode::Space)) => {
+                    single_step = true;
                     state.flow();
                     state.generate_goop();
+                }
+                Event::KeyboardInput(ElementState::Pressed, _,
+                                     Some(VirtualKeyCode::Return)) => {
+                    single_step = false;
                 }
                 Event::MouseMoved(x, y) => {
                     let graph_pos = apply(window_to_graph, [x as f32, y as f32]);
@@ -142,5 +148,9 @@ fn run() -> Result<()> {
             }
         }
 
+        if !single_step {
+            state.flow();
+            state.generate_goop();
+        }
     }
 }
