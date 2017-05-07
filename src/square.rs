@@ -121,12 +121,12 @@ mod square_grid_as_graph {
 
 impl VisibleGraph for SquareGrid {
     fn bounds(&self) -> GraphPt {
-        GraphPt(self.cols as f32, self.rows as f32)
+        GraphPt([self.cols as f32, self.rows as f32])
     }
 
     fn center(&self, node: Node) -> GraphPt {
         let (row, col) = self.node_rc(node);
-        GraphPt(col as f32 + 0.5, row as f32 + 0.5)
+        GraphPt([col as f32 + 0.5, row as f32 + 0.5])
     }
 
     fn radius(&self) -> f32 { 0.5 }
@@ -176,7 +176,7 @@ impl VisibleGraph for SquareGrid {
         let mut points = Vec::new();
         for r in 0 .. self.rows + 1 {
             for c in 0 .. self.cols + 1 {
-                points.push(GraphPt(c as f32, r as f32))
+                points.push(GraphPt([c as f32, r as f32]))
             }
         }
         points
@@ -187,18 +187,18 @@ impl VisibleGraph for SquareGrid {
     /// are squares, centered on the point in question. We let the squares
     /// overlap a bit, leaving rectangles around each boundary line segment to
     /// treat as hits.
-    fn boundary_hit(&self, point: &GraphPt) -> Option<(Node, Node)> {
+    fn boundary_hit(&self, &GraphPt(point): &GraphPt) -> Option<(Node, Node)> {
         // Exclude points further than this from the side of a node, or nearer
         // than this to a square corner. Clearly, this must be less than 0.5, to
         // avoid ambiguity.
-        const TOLERANCE: f32 = 0.3;
+        const TOLERANCE: f32 = 0.25;
 
         // Exclude points outside the grid altogether, or on the outer edges.
         // This lets us assume that every hit we find is an interior boundary,
         // with another node on the other side.
-        let GraphPt(max_x, max_y) = self.bounds();
-        if point.0 < TOLERANCE || point.0 > max_x - TOLERANCE ||
-            point.1 < TOLERANCE || point.1 > max_y - TOLERANCE
+        let GraphPt(bounds) = self.bounds();
+        if point[0] < TOLERANCE || point[0] > bounds[0] - TOLERANCE ||
+            point[1] < TOLERANCE || point[1] > bounds[1] - TOLERANCE
         {
             return None;
         }
@@ -209,26 +209,26 @@ impl VisibleGraph for SquareGrid {
         }
 
         // Exclude points near corners.
-        if near(point.0, TOLERANCE) && near(point.1, TOLERANCE) {
+        if near(point[0], TOLERANCE) && near(point[1], TOLERANCE) {
             return None;
         }
 
         // Recognize points near vertical edges. We know these points cannot
         // also be near horizontal edges, since we've already excluded corners.
-        if near(point.0, TOLERANCE) {
+        if near(point[0], TOLERANCE) {
             // Both the round and floor here produce positive numbers, given the
             // exclusions above.
-            let col = point.0.round() as usize;
-            let row = point.1.floor() as usize;
+            let col = point[0].round() as usize;
+            let row = point[1].floor() as usize;
 
             return Some((self.rc_node(row, col),
                          self.rc_node(row, col - 1)));
         }
 
         // Recognize points near horizontal edges. As above, just transposed.
-        if near(point.1, TOLERANCE) {
-            let col = point.0.floor() as usize;
-            let row = point.1.round() as usize;
+        if near(point[1], TOLERANCE) {
+            let col = point[0].floor() as usize;
+            let row = point[1].round() as usize;
 
             return Some((self.rc_node(row, col),
                          self.rc_node(row - 1, col)));
@@ -244,7 +244,7 @@ mod square_grid_as_visible_graph {
     use super::SquareGrid;
 
     /// Construct a GraphPt. For brevity in tests.
-    fn gp(x: f32, y: f32) -> GraphPt { GraphPt(x, y) }
+    fn gp(x: f32, y: f32) -> GraphPt { GraphPt([x, y]) }
 
     #[test]
     fn bounds() {

@@ -165,7 +165,7 @@ impl MapDrawer {
         // It's a little annoying that we have to do this map to convert GraphPt
         // to GraphVertex, but I'd rather do this than a transmute.
         let vertices: Vec<GraphVertex> = graph.endpoints().into_iter()
-            .map(|point| GraphVertex { point: [point.0, point.1] })
+            .map(|GraphPt(point)| GraphVertex { point })
             .collect();
         let vertices = VertexBuffer::new(display, &vertices)
             .chain_err(|| "building buffer for graph vertices")?;
@@ -253,8 +253,7 @@ impl OutflowsDrawer {
 
         let centers: Vec<GraphVertex> = (0..graph.nodes())
             .map(|node| {
-                let GraphPt(x, y) = graph.center(node);
-                GraphVertex { point: [x, y] }
+                GraphVertex { point: graph.center(node).0 }
             })
             .collect();
         let centers = VertexBuffer::new(display, &centers)
@@ -367,14 +366,14 @@ struct GoopDrawer {
 
 /// Given an RGB triple, return the position in the texture of the center of the
 /// circle of radius one with that color.
-fn color_to_circle((r, g, b): (u8, u8, u8)) -> (f32, f32) {
+fn color_to_circle((r, g, b): (u8, u8, u8)) -> [f32; 2] {
     // Take the upper four bits of each component, and combine them into a
     // twelve-bit value.
     let (r, g, b) = ((r >> 4) as u32, (g >> 4) as u32, (b >> 4) as u32);
     let index = r << 8 | g << 4 | b;
 
     // Space out the circles by MAX_GOOP, just to be safe.
-    ((index + 1) as f32 * (MAX_GOOP as f32), 0.0)
+    [(index + 1) as f32 * (MAX_GOOP as f32), 0.0]
 }
 
 /// A type that can be constructed from a coordinate pair.
@@ -394,11 +393,11 @@ impl TwoD for UVVertex {
 // axis-aligned square with the given `center` and a side length of `2 *
 // radius`. The corners are pushed in counterclockwise order, starting
 // in the first quadrant.
-fn push_corners<T: TwoD>(vec: &mut Vec<T>, center: (f32, f32), radius: f32) {
-    vec.push(T::new(center.0 + radius, center.1 + radius));
-    vec.push(T::new(center.0 - radius, center.1 + radius));
-    vec.push(T::new(center.0 - radius, center.1 - radius));
-    vec.push(T::new(center.0 + radius, center.1 - radius));
+fn push_corners<T: TwoD>(vec: &mut Vec<T>, center: [f32; 2], radius: f32) {
+    vec.push(T::new(center[0] + radius, center[1] + radius));
+    vec.push(T::new(center[0] - radius, center[1] + radius));
+    vec.push(T::new(center[0] - radius, center[1] - radius));
+    vec.push(T::new(center[0] + radius, center[1] - radius));
 }
 
 
@@ -419,8 +418,7 @@ impl GoopDrawer {
 
         let mut squares = Vec::with_capacity(graph.nodes() * 4);
         for node in 0 .. graph.nodes() {
-            let GraphPt(x, y) = graph.center(node);
-            push_corners(&mut squares, (x, y), radius);
+            push_corners(&mut squares, graph.center(node).0, radius);
         }
         let squares = VertexBuffer::new(display, &squares)
             .chain_err(|| "building vertex buffer for goop squares")?;
@@ -479,7 +477,7 @@ impl GoopDrawer {
                     // refer to a blank part of the texture. The shader ensures
                     // that the leftmost circle is at the origin, so everything
                     // to the left of the y axis is blank.
-                    push_corners(&mut textures, (-(MAX_GOOP as f32), 0.0), 1.0);
+                    push_corners(&mut textures, [-(MAX_GOOP as f32), 0.0], 1.0);
                 }
             }
         }
@@ -544,10 +542,8 @@ impl MouseDrawer {
             Display::Outflow { nodes: (from, to), state: outflow_state } => {
                 // Prepare the vertices.
                 let graph = &state.map.graph;
-                let GraphPt(from_x, from_y) = graph.center(from);
-                let GraphPt(to_x, to_y) = graph.center(to);
-                let outflow = [GraphVertex { point: [from_x, from_y] },
-                               GraphVertex { point: [to_x, to_y] }];
+                let outflow = [GraphVertex { point: graph.center(from).0 },
+                               GraphVertex { point: graph.center(to).0 }];
                 self.outflow.borrow_mut().write(&outflow);
 
                 match outflow_state {

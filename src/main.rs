@@ -128,7 +128,7 @@ fn run() -> Result<()> {
                 }
                 Event::MouseMoved(x, y) => {
                     let graph_pos = apply(window_to_graph, [x as f32, y as f32]);
-                    mouse.move_to(GraphPt(graph_pos[0], graph_pos[1]));
+                    mouse.move_to(GraphPt(graph_pos));
                 }
                 Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
                     mouse.click();

@@ -72,8 +72,8 @@ fn f32_eq(lhs: f32, rhs: f32) -> bool {
 
 impl PartialEq<EqPoint> for EqPoint {
     fn eq(&self, other: &EqPoint) -> bool {
-        f32_eq(self.0 .0, other.0 .0) &&
-        f32_eq(self.0 .1, other.0 .1)
+        f32_eq(self.0 .0[0], other.0 .0[0]) &&
+        f32_eq(self.0 .0[1], other.0 .0[1])
     }
 }
 
@@ -83,8 +83,8 @@ impl Hash for EqPoint {
     fn hash<H>(&self, state: &mut H)
         where H: Hasher
     {
-        f32_bits(self.0 .0).hash(state);
-        f32_bits(self.0 .1).hash(state);
+        f32_bits(self.0 .0[0]).hash(state);
+        f32_bits(self.0 .0[1]).hash(state);
     }
 }
 
@@ -114,8 +114,9 @@ pub struct SegmentWithPoints {
 fn order_segment(segment: &Range<GraphPt>) -> Range<GraphPt> {
     let start = &segment.start;
     let end = &segment.end;
-    if f32_bits(start.0) > f32_bits(end.0) ||
-        (f32_bits(start.0) == f32_bits(end.0) && f32_bits(start.1) > f32_bits(end.1))
+    if f32_bits(start.0[0]) > f32_bits(end.0[0]) ||
+        (f32_bits(start.0[0]) == f32_bits(end.0[0]) &&
+         f32_bits(start.0[1]) > f32_bits(end.0[1]))
     {
         Range { start: segment.end, end: segment.start }
     } else {

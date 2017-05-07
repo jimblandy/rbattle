@@ -86,7 +86,7 @@ pub trait VisibleGraph: Graph {
 
 /// A point in the graph coordinate space.
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct GraphPt(pub f32, pub f32);
+pub struct GraphPt(pub [f32; 2]);
 
 /// A line segment from the boundary of a node's area.
 #[derive(Clone, Debug)]

@@ -33,7 +33,8 @@ impl<G: VisibleGraph> Map<G> {
         // Compute the transformation from graph space, where points run from
         // (0, 0) to upper_right, to game space, where points run from (-1, -1)
         // to (1,1).
-        let GraphPt(width, height) = graph.bounds();
+        let GraphPt(bounds) = graph.bounds();
+        let (width, height) = (bounds[0], bounds[1]); // dumb; see issue #23121
         let game_aspect = width / height;
         let graph_to_game =
             compose(translate_transform(-1.0, -1.0),
