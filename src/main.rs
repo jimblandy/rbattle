@@ -27,7 +27,7 @@ use map::Map;
 use math::{apply, compose};
 use mouse::Mouse;
 use square::SquareGrid;
-use state::{MAX_GOOP, Occupied, Player, State};
+use state::{GameParameters, MAX_GOOP, Occupied, Player, State};
 use visible_graph::GraphPt;
 
 use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
@@ -71,40 +71,17 @@ fn run() -> Result<()> {
         .build_glium()
         .chain_err(|| "unable to open window")?;
 
-    let graph = SquareGrid::new(15, 15);
-    let sources = vec![16, 45];
-    let colors = vec![(0x9f, 0x20, 0xb1), (0xb1, 0x20, 0x44),
-                      (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1),
-                      (0xe0, 0x6f, 0x3a)];
-    let map = Rc::new(Map::new(graph, sources, colors));
+    let mut state = State::new(GameParameters {
+        board: (15, 15),
+        sources: vec![32, 192],
+        colors: vec![(0x9f, 0x20, 0xb1), (0xb1, 0x20, 0x44),
+                     (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1),
+                     (0xe0, 0x6f, 0x3a)]
+    });
+    let map = state.map.clone();
+
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
-
-    let mut state = State::new(map.clone());
-
-    state.nodes[45] = Some(Occupied {
-        player: Player(2),
-        outflows: map.graph.neighbors(45),
-        goop: MAX_GOOP
-    });
-
-    state.nodes[30] = Some(Occupied {
-        player: Player(2),
-        outflows: vec![15],
-        goop: 0
-    });
-
-    state.nodes[16] = Some(Occupied {
-        player: Player(0),
-        outflows: map.graph.neighbors(16),
-        goop: MAX_GOOP
-    });
-
-    state.nodes[17] = Some(Occupied {
-        player: Player(1),
-        outflows: vec![],
-        goop: 2
-    });
 
     let mut mouse = Mouse::new(map.clone());
 

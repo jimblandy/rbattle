@@ -18,6 +18,7 @@
 use graph::Node;
 use visible_graph::VisibleGraph;
 use map::Map;
+use square::SquareGrid;
 use std::rc::Rc;
 use rand::{Rng, SeedableRng, XorShiftRng};
 
@@ -71,9 +72,20 @@ fn index_mut_pair<T>(slice: &mut [T], i: usize, j: usize) -> (&mut T, &mut T) {
 }
 
 impl State {
-    pub fn new(map: Rc<Map>) -> State {
+    pub fn new(params: GameParameters) -> State {
+        let graph = SquareGrid::new(params.board.0, params.board.1);
+        let map = Rc::new(Map::new(graph, params.sources, params.colors));
+
         const SEED: [u32; 4] = [0xcd9d5eaa, 0xf04bc9a7, 0x4602cc70, 0x98d01ef9];
-        let nodes = repeat(None).take(map.graph.nodes()).collect();
+        let mut nodes: Vec<Option<Occupied>> = repeat(None).take(map.graph.nodes()).collect();
+        // Ensure that each source is occupied by its player.
+        for (player, &source) in map.sources.iter().enumerate() {
+            nodes[source] = Some(Occupied {
+                player: Player(player),
+                outflows: vec![],
+                goop: 0
+            });
+        }
         State { map, nodes, rng: XorShiftRng::from_seed(SEED) }
     }
 
@@ -204,3 +216,18 @@ pub enum Action {
     /// Toggle the state of the given outflow.
     ToggleOutflow((Node, Node)),
 }
+
+/// A set of parameters that can be used to initialize a game.
+pub struct GameParameters {
+    /// The dimensions of the board.
+    pub board: (usize, usize),
+
+    /// The position of the sources on the board. The number of players is the
+    /// length of this vector.
+    pub sources: Vec<Node>,
+
+    /// The color assigned to each player, as an RGB triplet. This must be the
+    /// same length as `sources`.
+    pub colors: Vec<(u8, u8, u8)>
+}
+
