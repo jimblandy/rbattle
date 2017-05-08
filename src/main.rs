@@ -23,11 +23,11 @@ mod visible_graph;
 
 use drawer::Drawer;
 use graph::Graph;
-use map::{Map, Player};
+use map::Map;
 use math::{apply, compose};
 use mouse::Mouse;
 use square::SquareGrid;
-use state::{MAX_GOOP, Occupied, State};
+use state::{MAX_GOOP, Occupied, Player, State};
 use visible_graph::GraphPt;
 
 use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};

@@ -49,7 +49,3 @@ impl<G: VisibleGraph> Map<G> {
         Map { graph, sources, graph_to_game, game_to_graph, game_aspect, player_colors }
     }
 }
-
-/// A player id number.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct Player(pub usize);

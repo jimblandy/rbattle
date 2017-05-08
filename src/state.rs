@@ -17,7 +17,7 @@
 
 use graph::Node;
 use visible_graph::VisibleGraph;
-use map::{Map, Player};
+use map::Map;
 use std::rc::Rc;
 use rand::{Rng, SeedableRng, XorShiftRng};
 
@@ -35,6 +35,10 @@ pub struct State<G: VisibleGraph> {
     /// The random number generator used to drive the goop flow algorithm.
     rng: XorShiftRng,
 }
+
+/// A player id number.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct Player(pub usize);
 
 /// The state of a node that is occupied by some player.
 #[derive(Debug, Clone)]
