@@ -89,6 +89,11 @@ pub fn cross(lhs: [f32; 3], rhs: [f32; 3]) -> [f32; 3] {
      (lhs[0] * rhs[1]) - (lhs[1] * rhs[0])]
 }
 
+/// Compute the midpoint between the `lhs` and `rhs`.
+pub fn midpoint(lhs: [f32; 2], rhs: [f32; 2]) -> [f32; 2] {
+    [(lhs[0] + rhs[0]) / 2.0, (lhs[1] + rhs[1]) / 2.0]
+}
+
 /// Apply the transformation `trans` to `vec`. The `vec` argument may be either
 /// an `[f32; 2]` or an `[f32; 3]`.
 pub fn apply<V: Homogeneous>(trans: Matrix, vec: V) -> V {
