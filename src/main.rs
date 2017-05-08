@@ -19,7 +19,6 @@ mod math;
 mod mouse;
 mod square;
 mod state;
-mod timer;
 mod visible_graph;
 
 use drawer::Drawer;
