@@ -138,7 +138,7 @@ struct MapDrawer {
     /// Shader program for drawing the map.
     program: Program,
 
-    /// Vertexes of the graph's boundary lines.
+    /// Vertices of the graph's boundary lines.
     vertices: VertexBuffer<GraphVertex>,
 
     /// Indices for the graph's boundary lines.
@@ -337,13 +337,13 @@ struct GoopDrawer {
     /// Shader program for drawing goop.
     program: Program,
 
-    /// Vertexes for the squares on each node, without texture coordinates.
+    /// Vertices for the squares on each node, without texture coordinates.
     /// These are a function of the map, and so are fixed from one frame to the
     /// next. The vertices for node `i` are at `4*i .. 4*i + 4`, going
     /// counterclockwise through the quadrants.
     squares: VertexBuffer<GraphVertex>,
 
-    /// Vertexes of the texture coordinates of each node's square. Parallel to
+    /// Vertices of the texture coordinates of each node's square. Parallel to
     /// the `squares` vertex buffer. This is a "persistent" vertex buffer: its
     /// contents change on each frame, based on goop levels.
     textures: RefCell<VertexBuffer<UVVertex>>,
@@ -503,7 +503,7 @@ struct MouseDrawer {
     /// Shader program for drawing outflows being clicked upon.
     program: Program,
 
-    /// Vertexes of the outflow.
+    /// Vertices of the outflow.
     outflow: RefCell<VertexBuffer<GraphVertex>>,
 }
 
