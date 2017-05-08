@@ -24,7 +24,7 @@ mod visible_graph;
 use drawer::Drawer;
 use math::{apply, compose};
 use mouse::Mouse;
-use state::{GameParameters, State};
+use state::{GameParameters, Player, State};
 use visible_graph::GraphPt;
 
 use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
@@ -79,7 +79,7 @@ fn run() -> Result<()> {
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
 
-    let mut mouse = Mouse::new(map.clone());
+    let mut mouse = Mouse::new(Player(0), map.clone());
 
     let mut turn = 0;
     let start = Instant::now();

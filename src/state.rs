@@ -188,7 +188,7 @@ impl State {
     pub fn take_action(&mut self, action: Action) {
         println!("take_action({:?})", action);
         match action {
-            Action::ToggleOutflow((from, to)) => {
+            Action::ToggleOutflow { player, outflow: (from, to) } => {
                 // This is really just a click on the shared boundary of the two
                 // nodes; it doesn't express any particular desired direction.
                 // Try to infer the user's intent from the situation.
@@ -212,8 +212,8 @@ impl State {
 /// Actions that can be taken on a `State`.
 #[derive(Debug)]
 pub enum Action {
-    /// Toggle the state of the given outflow.
-    ToggleOutflow((Node, Node)),
+    /// The `player` has requested to toggle the `outflow`.
+    ToggleOutflow { player: Player, outflow: (Node, Node) },
 }
 
 /// A set of parameters that can be used to initialize a game.

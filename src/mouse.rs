@@ -6,7 +6,7 @@
 
 use graph::Node;
 use map::Map;
-use state::{Action, State};
+use state::{Action, Player, State};
 use visible_graph::GraphPt;
 
 use std::rc::Rc;
@@ -14,6 +14,9 @@ use std::rc::Rc;
 /// The game's state for handling mouse activity.
 #[derive(Debug, Clone)]
 pub struct Mouse {
+    /// The player we represent.
+    player: Player,
+
     /// The map we're controlling.
     map: Rc<Map>,
 
@@ -42,8 +45,8 @@ enum Affordance {
 }
 
 impl Mouse {
-    pub fn new(map: Rc<Map>) -> Mouse {
-        Mouse { map, position: Affordance::Nothing, click: None }
+    pub fn new(player: Player, map: Rc<Map>) -> Mouse {
+        Mouse { player, map, position: Affordance::Nothing, click: None }
     }
 
     /// Report that the mouse moved to `pos` in graph space coordinates.
@@ -75,7 +78,11 @@ impl Mouse {
 
                 match affordance {
                     Affordance::Nothing => None,
-                    Affordance::Outflow(pos) => Some(Action::ToggleOutflow(pos))
+                    Affordance::Outflow(pos) =>
+                        Some(Action::ToggleOutflow {
+                            player: self.player,
+                            outflow: pos
+                        })
                 }
             }
         }
