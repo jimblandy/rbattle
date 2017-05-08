@@ -72,17 +72,13 @@ pub trait VisibleGraph: Graph + Debug {
     /// index.
     fn endpoints(&self) -> Vec<GraphPt>;
 
-    /// Determine which boundary line a mouse click on the point `(x, y)` refers
-    /// to. If it refers to a boundary line between two nodes, return them.
-    /// Otherwise, return `None`.
+    /// Determine which outgoing graph edge a mouse click on the given point
+    /// refers to. Edges are directed, from a specific node to another specific
+    /// node, rather than simply being an unordered pair of nodes.
     ///
-    /// An additional restriction: a VisibleGraph must always identify a
-    /// particular boundary line using the two `Node` elements *in the same
-    /// order*. That is, it can't return `(3,4)` from one call, and then `(4,3)`
-    /// from another call. Typical implementations satisfy this naturally, but
-    /// when that isn't the case, the implementation can simply ensure that the
-    /// lower node number always comes first.
-    fn boundary_hit(&self, &GraphPt) -> Option<(Node, Node)>;
+    /// If the point does identify an outgoing graph edge, return the a pair
+    /// `(from, to)`.
+    fn edge_hit(&self, &GraphPt) -> Option<(Node, Node)>;
 }
 
 /// A point in the graph coordinate space.

@@ -51,7 +51,7 @@ impl Mouse {
 
     /// Report that the mouse moved to `pos` in graph space coordinates.
     pub fn move_to(&mut self, pos: GraphPt) {
-        self.position = match self.map.graph.boundary_hit(&pos) {
+        self.position = match self.map.graph.edge_hit(&pos) {
             Some(pos) => Affordance::Outflow(pos),
             None => Affordance::Nothing
         }
