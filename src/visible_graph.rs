@@ -1,6 +1,7 @@
 //! The `VisibleGraph` trait, and types it refers to.
 
 use graph::{Graph, Node};
+use std::fmt::Debug;
 use std::ops::Range;
 
 /// A `Graph` that can be drawn on the screen.
@@ -50,7 +51,7 @@ use std::ops::Range;
 /// way, because sharing vertex positions reduces the amount of data that must
 /// be moved from CPU to GPU to draw a given frame.
 
-pub trait VisibleGraph: Graph {
+pub trait VisibleGraph: Graph + Debug {
     /// Return the upper-right corner of the smallest axis-aligned
     /// bounding box that contains all nodes' areas.
     fn bounds(&self) -> GraphPt;

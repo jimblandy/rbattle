@@ -13,9 +13,9 @@ use std::rc::Rc;
 
 /// The game's state for handling mouse activity.
 #[derive(Debug, Clone)]
-pub struct Mouse<G: VisibleGraph> {
+pub struct Mouse {
     /// The map we're controlling.
-    map: Rc<Map<G>>,
+    map: Rc<Map>,
 
     /// Where we last saw the mouse. Rather than representing this as a point on
     /// the plane, we keep it in dathe form relevant to our purposes, broken
@@ -41,8 +41,8 @@ enum Affordance {
     Outflow((Node, Node)),
 }
 
-impl<G: VisibleGraph> Mouse<G> {
-    pub fn new(map: Rc<Map<G>>) -> Mouse<G> {
+impl Mouse {
+    pub fn new(map: Rc<Map>) -> Mouse {
         Mouse { map, position: Affordance::Nothing, click: None }
     }
 
@@ -83,7 +83,7 @@ impl<G: VisibleGraph> Mouse<G> {
 
     /// Given `state`, choose how to display the interactive parts of the game
     /// grid.
-    pub fn display(&self, _state: &State<G>) -> Display {
+    pub fn display(&self, _state: &State) -> Display {
         match (self.click, self.position) {
             // We're over something we're not clicking on.
             (None, Affordance::Outflow(pos)) =>

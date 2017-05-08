@@ -7,9 +7,9 @@ use visible_graph::{GraphPt, VisibleGraph};
 /// A `Map` holds everything that does not change over the course of an RBattle
 /// game. This includes a graph, and a set of nodes that have goop sources.
 #[derive(Debug)]
-pub struct Map<G: VisibleGraph> {
+pub struct Map {
     /// The graph of nodes comprising this map's territory.
-    pub graph: G,
+    pub graph: Box<VisibleGraph>,
 
     /// The nodes of `graph` that contain goop sources.
     pub sources: Vec<Node>,
@@ -28,8 +28,13 @@ pub struct Map<G: VisibleGraph> {
     pub player_colors: Vec<(u8, u8, u8)>,
 }
 
-impl<G: VisibleGraph> Map<G> {
-    pub fn new(graph: G, sources: Vec<Node>, player_colors: Vec<(u8, u8, u8)>) -> Map<G> {
+impl Map {
+    pub fn new<G>(graph: G,
+                  sources: Vec<Node>,
+                  player_colors: Vec<(u8, u8, u8)>)
+                  -> Map
+        where G: 'static + VisibleGraph
+    {
         // Compute the transformation from graph space, where points run from
         // (0, 0) to upper_right, to game space, where points run from (-1, -1)
         // to (1,1).
@@ -46,6 +51,7 @@ impl<G: VisibleGraph> Map<G> {
         let game_to_graph = inverse(graph_to_game)
             .expect("graph_to_game transformation should be invertible");
 
-        Map { graph, sources, graph_to_game, game_to_graph, game_aspect, player_colors }
+        Map { graph: Box::new(graph), sources, graph_to_game,
+              game_to_graph, game_aspect, player_colors }
     }
 }

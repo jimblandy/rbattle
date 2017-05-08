@@ -34,7 +34,7 @@ use map::Map;
 use state::{State, MAX_GOOP, Occupied};
 use math::{compose, inverse, scale_transform, translate_transform};
 use mouse::{Mouse, Display, OutflowState};
-use visible_graph::{GraphPt, VisibleGraph};
+use visible_graph::GraphPt;
 
 use glium::{Blend, DrawParameters, Frame, IndexBuffer, Program, Surface, VertexBuffer};
 use glium::backend::Facade;
@@ -67,8 +67,7 @@ pub struct Drawer {
 }
 
 impl Drawer {
-    pub fn new<G>(display: &Facade, map: &Map<G>) -> Result<Drawer>
-        where G: VisibleGraph
+    pub fn new(display: &Facade, map: &Map) -> Result<Drawer>
     {
         let map_drawer = MapDrawer::new(display, map)?;
         let outflows = OutflowsDrawer::new(display, map)?;
@@ -82,11 +81,10 @@ impl Drawer {
     ///
     /// Return the current transformation from window coordinates to game
     /// coordinates, for use by the controller.
-    pub fn draw<G>(&self,
-                   frame: &mut Frame,
-                   state: &State<G>,
-                   mouse: &Mouse<G>) -> Result<[[f32; 3]; 3]>
-        where G: VisibleGraph
+    pub fn draw(&self,
+                frame: &mut Frame,
+                state: &State,
+                mouse: &Mouse) -> Result<[[f32; 3]; 3]>
     {
         let map = &*state.map;
 
@@ -151,8 +149,7 @@ struct MapDrawer {
 }
 
 impl MapDrawer {
-    fn new<G>(display: &Facade, map: &Map<G>) -> Result<MapDrawer>
-        where G: VisibleGraph
+    fn new(display: &Facade, map: &Map) -> Result<MapDrawer>
     {
         let graph = &map.graph;
 
@@ -204,8 +201,7 @@ impl MapDrawer {
     ///
     /// The map `state` uses must be the same map that was passed to
     /// `MapDrawer::new` when this `MapDrawer` was created.
-    fn draw<G>(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], _map: &Map<G>) -> Result<()>
-        where G: VisibleGraph
+    fn draw(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], _map: &Map) -> Result<()>
     {
         frame.draw(&self.vertices, &self.indices, &self.program,
                    &uniform! {
@@ -240,8 +236,7 @@ struct OutflowsDrawer {
 }
 
 impl OutflowsDrawer {
-    fn new<G>(display: &Facade, map: &Map<G>) -> Result<OutflowsDrawer>
-        where G: VisibleGraph
+    fn new(display: &Facade, map: &Map) -> Result<OutflowsDrawer>
     {
         let graph = &map.graph;
 
@@ -402,8 +397,7 @@ fn push_corners<T: TwoD>(vec: &mut Vec<T>, center: [f32; 2], radius: f32) {
 
 
 impl GoopDrawer {
-    fn new<G>(display: &Facade, map: &Map<G>) -> Result<GoopDrawer>
-        where G: VisibleGraph
+    fn new(display: &Facade, map: &Map) -> Result<GoopDrawer>
     {
         let program = Program::from_source(display,
                                            include_str!("goop.vert"),
@@ -453,9 +447,8 @@ impl GoopDrawer {
                         indices, draw_params })
     }
 
-    fn draw<G>(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<Occupied>], map: &Map<G>)
+    fn draw(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<Occupied>], map: &Map)
             -> Result<()>
-        where G: VisibleGraph
     {
         assert_eq!(nodes.len(), map.graph.nodes());
 
@@ -516,8 +509,7 @@ struct MouseDrawer {
 }
 
 impl MouseDrawer {
-    fn new<G>(display: &Facade, _map: &Map<G>) -> Result<MouseDrawer>
-        where G: VisibleGraph
+    fn new(display: &Facade, _map: &Map) -> Result<MouseDrawer>
     {
         let program = Program::from_source(display,
                                            include_str!("map.vert"),
@@ -531,10 +523,10 @@ impl MouseDrawer {
         Ok(MouseDrawer { program, outflow: RefCell::new(outflow) })
     }
 
-    fn draw<G: VisibleGraph>(&self, frame: &mut Frame,
-                             to_device: &[[f32; 3]; 3],
-                             state: &State<G>,
-                             mouse: &Mouse<G>) -> Result<()>
+    fn draw(&self, frame: &mut Frame,
+            to_device: &[[f32; 3]; 3],
+            state: &State,
+            mouse: &Mouse) -> Result<()>
     {
         match mouse.display(state) {
             Display::Nothing => Ok(()),
