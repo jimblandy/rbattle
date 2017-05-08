@@ -79,7 +79,7 @@ impl<G: VisibleGraph> State<G> {
     /// we need something simpler here. We just visit every outgoing edge in a
     /// random order, and propagate a unit of goop if the destination permits
     /// it.
-    pub fn flow(&mut self) {
+    fn flow(&mut self) {
         // Build a vector of (from, to) pairs.
         let mut outflow_list = Vec::new();
         for node in 0..self.map.graph.nodes() {
@@ -150,7 +150,7 @@ impl<G: VisibleGraph> State<G> {
     }
 
     /// Let sources generate new goop.
-    pub fn generate_goop(&mut self) {
+    fn generate_goop(&mut self) {
         for &source in &self.map.sources {
             match &mut self.nodes[source] {
                 &mut None => panic!("source nodes should always be occupied by someone"),
@@ -161,6 +161,12 @@ impl<G: VisibleGraph> State<G> {
                 }
             }
         }
+    }
+
+    /// Advance `self` to the next state.
+    pub fn advance(&mut self) {
+        self.flow();
+        self.generate_goop();
     }
 
     /// Apply `action` to this state.
