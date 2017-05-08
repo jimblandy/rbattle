@@ -35,7 +35,7 @@ use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
 use glium::Surface;
 
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 // This only gives access within this module. Make this `pub use errors::*;`
 // instead if the types must be accessible from other modules (e.g., within
