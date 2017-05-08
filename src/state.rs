@@ -188,21 +188,22 @@ impl State {
     pub fn take_action(&mut self, action: Action) {
         println!("take_action({:?})", action);
         match action {
-            Action::ToggleOutflow { player, outflow: (from, to) } => {
-                // This is really just a click on the shared boundary of the two
-                // nodes; it doesn't express any particular desired direction.
-                // Try to infer the user's intent from the situation.
-                let (from, to) = match (&self.nodes[from], &self.nodes[to]) {
-                    (&Some(_), &None) => (from, to),
-                    (&None, &Some(_)) => (to, from),
-                    _ => return
-                };
+            Action::ToggleOutflow { player, from, to } => {
+                match &mut self.nodes[from] {
+                    // This node is empty. Don't change it.
+                    &mut None => (),
 
-                let outflows = &mut self.nodes[from].as_mut().unwrap().outflows;
-                if outflows.contains(&to) {
-                    outflows.retain(|&dest| dest != to);
-                } else {
-                    outflows.push(to);
+                    // Some other player owns this node. Do nothing.
+                    &mut Some(Occupied { player: p, .. }) if p != player => (),
+
+                    // We own this node. Toggle the given outflow.
+                    &mut Some(Occupied { ref mut outflows, .. }) => {
+                        if outflows.contains(&to) {
+                            outflows.retain(|&dest| dest != to);
+                        } else {
+                            outflows.push(to);
+                        }
+                    }
                 }
             }
         }
@@ -212,8 +213,9 @@ impl State {
 /// Actions that can be taken on a `State`.
 #[derive(Debug)]
 pub enum Action {
-    /// The `player` has requested to toggle the `outflow`.
-    ToggleOutflow { player: Player, outflow: (Node, Node) },
+    /// The `player` has requested to toggle the outflow
+    /// from `from` to `to`.
+    ToggleOutflow { player: Player, from: Node, to: Node },
 }
 
 /// A set of parameters that can be used to initialize a game.

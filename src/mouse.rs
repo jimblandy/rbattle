@@ -40,7 +40,7 @@ enum Affordance {
     /// The mouse is not over any interesting element on the map.
     Nothing,
 
-    /// The mouse is over an outflow edge between the two nodes.
+    /// The mouse is over an outflow edge from the first node to the second.
     Outflow((Node, Node)),
 }
 
@@ -78,10 +78,10 @@ impl Mouse {
 
                 match affordance {
                     Affordance::Nothing => None,
-                    Affordance::Outflow(pos) =>
+                    Affordance::Outflow((from, to)) =>
                         Some(Action::ToggleOutflow {
                             player: self.player,
-                            outflow: pos
+                            from, to
                         })
                 }
             }
