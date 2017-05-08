@@ -22,18 +22,14 @@ mod state;
 mod visible_graph;
 
 use drawer::Drawer;
-use graph::Graph;
-use map::Map;
 use math::{apply, compose};
 use mouse::Mouse;
-use square::SquareGrid;
-use state::{GameParameters, MAX_GOOP, Occupied, Player, State};
+use state::{GameParameters, State};
 use visible_graph::GraphPt;
 
 use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
 use glium::Surface;
 
-use std::rc::Rc;
 use std::time::Instant;
 
 // This only gives access within this module. Make this `pub use errors::*;`

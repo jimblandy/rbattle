@@ -7,7 +7,7 @@
 use graph::Node;
 use map::Map;
 use state::{Action, State};
-use visible_graph::{GraphPt, VisibleGraph};
+use visible_graph::GraphPt;
 
 use std::rc::Rc;
 

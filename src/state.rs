@@ -16,7 +16,6 @@
 //!   only then is the `State` affected.
 
 use graph::Node;
-use visible_graph::VisibleGraph;
 use map::Map;
 use square::SquareGrid;
 use std::rc::Rc;
