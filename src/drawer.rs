@@ -32,7 +32,7 @@
 use errors::*;
 use map::Map;
 use state::{State, MAX_GOOP, Occupied};
-use math::{compose, inverse, scale_transform, translate_transform};
+use math::{compose, inverse, midpoint, scale_transform, translate_transform};
 use mouse::{Mouse, Display, OutflowState};
 use visible_graph::GraphPt;
 
@@ -109,7 +109,7 @@ impl Drawer {
 
         self.map.draw(frame, &graph_to_device, &state.map)?;
         self.goop.draw(frame, &graph_to_device, &state.nodes, &state.map)?;
-        self.outflows.draw(frame, &graph_to_device, &state.nodes)?;
+        self.outflows.draw(frame, &graph_to_device, &state.nodes, &state.map)?;
         self.mouse.draw(frame, &graph_to_device, state, mouse)?;
 
         // Compute the transformation from window coordinates (pixels) to game
@@ -224,12 +224,8 @@ struct OutflowsDrawer {
     /// Shader program for drawing the outflows.
     program: Program,
 
-    /// Vertexes of the nodes' center positions.
-    centers: VertexBuffer<GraphVertex>,
-
-    /// Index buffer for outflows. This is a "persistent" index buffer, updated
-    /// once per frame.
-    indices: RefCell<IndexBuffer<u32>>,
+    /// Vertices of the outflows' endpoints.
+    vertices: RefCell<VertexBuffer<GraphVertex>>,
 
     /// Draw parameters for outflows.
     draw_params: DrawParameters<'static>
@@ -246,38 +242,41 @@ impl OutflowsDrawer {
                                            None)
             .chain_err(|| "compiling outflow shaders")?;
 
-        let centers: Vec<GraphVertex> = (0..graph.nodes())
-            .map(|node| {
-                GraphVertex { point: graph.center(node).0 }
-            })
-            .collect();
-        let centers = VertexBuffer::new(display, &centers)
-            .chain_err(|| "building buffer for outflow vertices")?;
-
-        let indices = IndexBuffer::empty_persistent(display,
-                                                    PrimitiveType::LinesList,
-                                                    graph.edges())
-            .chain_err(|| "allocating outflow index buffer")?;
+        let vertices = VertexBuffer::empty_persistent(display,
+                                                      2 * graph.edges())
+            .chain_err(|| "allocating outflow vertex buffer")?;
 
         let draw_params = DrawParameters {
             line_width: Some(5.0),
             .. Default::default()
         };
 
-        Ok(OutflowsDrawer { program, centers, indices: RefCell::new(indices), draw_params })
+        Ok(OutflowsDrawer {
+            program,
+            vertices: RefCell::new(vertices),
+            draw_params
+        })
     }
 
-    fn draw(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<Occupied>])
-               -> Result<()>
+    fn draw(&self,
+            frame: &mut Frame,
+            to_device: &[[f32; 3]; 3],
+            nodes: &[Option<Occupied>],
+            map: &Map)
+            -> Result<()>
     {
-        // Build indices for the goop flow lines we actually need to draw.
-        let mut indices = Vec::new();
+        // Build vertex positions for all goop outflows.
+        let mut vertices = Vec::new();
         for (node, state) in nodes.iter().enumerate() {
             match state {
                 &Some(ref occupied) => {
+                    let GraphPt(start) = map.graph.center(node);
                     for &outflow in &occupied.outflows {
-                        indices.push(node as u32);
-                        indices.push(outflow as u32);
+                        let GraphPt(end) = map.graph.center(outflow);
+                        let mid = midpoint(start, end);
+
+                        vertices.push(GraphVertex { point: start });
+                        vertices.push(GraphVertex { point: mid });
                     }
                 },
                 _ => ()
@@ -286,14 +285,14 @@ impl OutflowsDrawer {
 
         // Glium seems to have a bug with zero-length slices. Let's not argue
         // with it.
-        if indices.len() > 0 {
+        if vertices.len() > 0 {
             // Write the indices to an appropriately sized slice of `self.indices`.
-            self.indices.borrow_mut().slice_mut(0..indices.len())
-                .expect("more outflow edges than graph edges")
-                .write(&indices);
+            self.vertices.borrow_mut().slice_mut(0..vertices.len())
+                .expect("more outflow edges than graph claimed")
+                .write(&vertices);
 
-            frame.draw(&self.centers,
-                       self.indices.borrow().slice(0..indices.len()).unwrap(),
+            frame.draw(&*self.vertices.borrow(),
+                       &NoIndices(PrimitiveType::LinesList),
                        &self.program,
                        &uniform! {
                            graph_to_device: *to_device
