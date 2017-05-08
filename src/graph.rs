@@ -1,7 +1,7 @@
 /// The type of the index of a node in a `Grid`.
 pub type Node = usize;
 
-/// A graph of nodes and their neighbors.
+/// A directed graph of nodes and their neighbors.
 ///
 /// Each node is identified by a `Node` index.
 pub trait Graph {

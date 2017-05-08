@@ -19,6 +19,7 @@ pub struct SquareGrid {
 impl SquareGrid {
     /// Construct a `SquareGrid` with the given number of rows and columns.
     pub fn new(rows: usize, cols: usize) -> SquareGrid {
+        assert!(rows * cols > 0);
         SquareGrid { rows, cols }
     }
 
@@ -40,10 +41,11 @@ impl Graph for SquareGrid {
     fn nodes(&self) -> Node { self.rows * self.cols }
 
     fn edges(&self) -> Node {
-        // Each row has self.cols-1 horizontal edges;
-        // each column has self.rows-1 vertical edges.
-        (self.rows * (self.cols - 1) +
-         self.cols * (self.rows - 1))
+        // Each node has four outgoing edges,
+        // except for those along the edges.
+        4 * self.nodes() -
+            2 * self.rows -
+            2 * self.cols
     }
 
     fn neighbors(&self, node: Node) -> Vec<usize> {
@@ -75,13 +77,12 @@ mod square_grid_as_graph {
     #[test]
     fn nodes() {
         assert_eq!(SquareGrid::new(4, 7).nodes(), 28);
-        assert_eq!(SquareGrid::new(0, 100).nodes(), 0);
     }
 
     #[test]
     fn edges() {
-        assert_eq!(SquareGrid::new(4, 7).edges(), 45);
-        assert_eq!(SquareGrid::new(0, 100).nodes(), 0);
+        assert_eq!(SquareGrid::new(4, 7).edges(), 90);
+        assert_eq!(SquareGrid::new(1, 100).edges(), 198);
     }
 
     #[test]
