@@ -291,7 +291,7 @@ impl OutflowsDrawer {
                 .expect("more outflow edges than graph claimed")
                 .write(&vertices);
 
-            frame.draw(&*self.vertices.borrow(),
+            frame.draw(self.vertices.borrow().slice(0..vertices.len()).unwrap(),
                        &NoIndices(PrimitiveType::LinesList),
                        &self.program,
                        &uniform! {
