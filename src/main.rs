@@ -30,7 +30,6 @@ mod mouse;
 mod protocol;
 mod scheduler;
 mod square;
-mod synchronized_state;
 mod state;
 mod visible_graph;
 mod xorshift;
@@ -39,13 +38,15 @@ use drawer::Drawer;
 use map::MapParameters;
 use math::{apply, compose};
 use mouse::Mouse;
+use protocol::{Participant, Server};
 use state::Player;
-use synchronized_state::SynchronizedState;
 use visible_graph::GraphPt;
 
-use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
+use glium::glutin::{Event, ElementState, MouseButton};
 use glium::Surface;
 
+use std::io::Write;
+use std::net::SocketAddr;
 use std::time::Instant;
 
 // This only gives access within this module. Make this `pub use errors::*;`
@@ -75,7 +76,36 @@ fn main() {
     }
 }
 
+fn usage() -> ! {
+    writeln!(std::io::stderr(), "Usage: rbattle (client|server) ADDR")
+        .expect("error writing to stderr");
+    std::process::exit(1);
+}
+
 fn run() -> Result<()> {
+    let mut args = std::env::args().skip(1);
+    let mode = args.next().unwrap_or_else(|| usage());
+    let socket_addr: SocketAddr = args.next()
+        .unwrap_or_else(|| usage())
+        .parse()
+        .expect("couldn't parse address");
+
+    let mut participant: Box<Participant> =
+        if mode == "server" {
+            Box::new(Server::new(socket_addr, MapParameters {
+                size: (15, 15),
+                sources: vec![32, 42, 182, 192],
+                player_colors: vec![(0x9f, 0x20, 0xb1), (0xe0, 0x6f, 0x3a),
+                                    (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1)]
+            }))
+        } else if mode == "client" {
+            panic!("not implemented yet");
+        } else {
+            usage();
+        };
+
+    let map = participant.snapshot().map.clone();
+
     use glium::DisplayBuild;
 
     let display = glium::glutin::WindowBuilder::new()
@@ -83,28 +113,14 @@ fn run() -> Result<()> {
         .build_glium()
         .chain_err(|| "unable to open window")?;
 
-    let mut syn_state = SynchronizedState::new_server(MapParameters {
-        size: (15, 15),
-        sources: vec![32, 42, 182, 192],
-        player_colors: vec![(0x9f, 0x20, 0xb1), (0xe0, 0x6f, 0x3a),
-                            (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1)]
-    });
-    let map = syn_state.snapshot().map.clone();
-
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
 
     let mut mouse = Mouse::new(Player(0), map.clone());
 
-    let start = Instant::now();
-
-    // True if we should run a game step on every frame.
-    let mut free_running = false;
-
     loop {
-        // Take a snapshot of the current state and operate on that, to avoid
-        // holding the SynchronizedState's lock for very long.
-        let state = syn_state.snapshot();
+        // Take a snapshot of the current state and operate on that.
+        let state = participant.snapshot();
 
         // It seems like glium always makes a frame take a full 16ms, regardless
         // of how much work we ask it to do, but I don't see anything in the
@@ -120,19 +136,9 @@ fn run() -> Result<()> {
         let window_to_game = status?;
         let window_to_graph = compose(map.game_to_graph, window_to_game);
 
-        let mut single_step = false;
         for event in display.poll_events() {
             match event {
                 Event::Closed => return Ok(()),
-                Event::KeyboardInput(ElementState::Pressed, _,
-                                     Some(VirtualKeyCode::Space)) => {
-                    free_running = false;
-                    single_step = true;
-                }
-                Event::KeyboardInput(ElementState::Pressed, _,
-                                     Some(VirtualKeyCode::Return)) => {
-                    free_running = true;
-                }
                 Event::MouseMoved(x, y) => {
                     let graph_pos = apply(window_to_graph, [x as f32, y as f32]);
                     mouse.move_to(GraphPt(graph_pos));
@@ -142,19 +148,11 @@ fn run() -> Result<()> {
                 }
                 Event::MouseInput(ElementState::Released, MouseButton::Left) => {
                     if let Some(action) = mouse.release() {
-                        syn_state.request_action(action);
+                        participant.request_action(action);
                     }
                 }
                 _ => ()
             }
-        }
-
-        if free_running || single_step {
-            println!("Turn {} at {:9.3}s:", state.turn, elapsed_since(&start));
-
-            let start_generation = Instant::now();
-            syn_state.advance();
-            println!("    advance to next state: {:9.6}s:", elapsed_since(&start_generation));
         }
     }
 }
