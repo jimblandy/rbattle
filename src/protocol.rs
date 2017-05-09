@@ -179,9 +179,6 @@ pub struct Server {
     /// Information shared between the main thread, the server thread, and the
     /// scheduler thread.
     shared: Arc<Mutex<Shared>>,
-
-    /// The scheduler we interact with to take turns.
-    scheduler: Arc<Mutex<Scheduler>>
 }
 
 impl Server {
@@ -243,7 +240,7 @@ impl Server {
             guard.submit_actions(actions, Box::new(sender));
         }
 
-        Server { player, shared, scheduler }
+        Server { player, shared }
     }
 }
 
