@@ -38,7 +38,9 @@ impl SquareGrid {
 }
 
 impl Graph for SquareGrid {
-    fn nodes(&self) -> Node { self.rows * self.cols }
+    fn nodes(&self) -> Node {
+        unimplemented!();
+    }
 
     fn edges(&self) -> Node {
         unimplemented!();
