@@ -28,7 +28,7 @@ mod xorshift;
 use drawer::Drawer;
 use math::{apply, compose};
 use mouse::Mouse;
-use state::{GameParameters, Player, State};
+use state::{GameParameters, Player};
 use synchronized_state::SynchronizedState;
 use visible_graph::GraphPt;
 
