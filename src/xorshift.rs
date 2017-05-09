@@ -26,7 +26,7 @@ use rand::Rng;
 ///
 /// Unlike the RNGs in the rand crate, this one implements Hash and serde's
 /// Serialize and Deserialize traits.
-#[derive(Debug, Hash, Clone)]
+#[derive(Debug, Hash, Clone, Serialize, Deserialize)]
 pub struct XorShift128Plus {
     state: [u64; 2]
 }

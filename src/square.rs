@@ -10,7 +10,7 @@ use visible_graph::{GraphPt, IndexedSegment, VisibleGraph};
 /// In graph space, the grid constructed by the call `SquareGrid::new(r, c)`
 /// extends from `(0,0)` to `(c, r)`. Node are numbered in row-major order,
 /// bottom to top, left to right.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SquareGrid {
     rows: usize,
     cols: usize

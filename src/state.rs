@@ -40,11 +40,11 @@ pub struct State {
 }
 
 /// A player id number.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct Player(pub usize);
 
 /// The state of a node that is occupied by some player.
-#[derive(Clone, Debug, Hash, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Serialize, Deserialize)]
 pub struct Occupied {
     /// The player who controls this node.
     pub player: Player,
@@ -471,6 +471,7 @@ impl Hash for State {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct SerializableState {
     map: Map,
     nodes: Vec<Option<Occupied>>,
