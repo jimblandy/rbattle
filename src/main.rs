@@ -21,6 +21,7 @@ mod square;
 mod synchronized_state;
 mod state;
 mod visible_graph;
+mod xorshift;
 
 use drawer::Drawer;
 use math::{apply, compose};
