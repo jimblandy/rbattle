@@ -35,9 +35,10 @@ mod visible_graph;
 mod xorshift;
 
 use drawer::Drawer;
+use map::MapParameters;
 use math::{apply, compose};
 use mouse::Mouse;
-use state::{GameParameters, Player};
+use state::Player;
 use synchronized_state::SynchronizedState;
 use visible_graph::GraphPt;
 
@@ -81,11 +82,11 @@ fn run() -> Result<()> {
         .build_glium()
         .chain_err(|| "unable to open window")?;
 
-    let mut syn_state = SynchronizedState::new_server(GameParameters {
-        board: (15, 15),
+    let mut syn_state = SynchronizedState::new_server(MapParameters {
+        size: (15, 15),
         sources: vec![32, 42, 182, 192],
-        colors: vec![(0x9f, 0x20, 0xb1), (0xe0, 0x6f, 0x3a),
-                     (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1)]
+        player_colors: vec![(0x9f, 0x20, 0xb1), (0xe0, 0x6f, 0x3a),
+                            (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1)]
     });
     let map = syn_state.snapshot().map.clone();
 

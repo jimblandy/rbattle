@@ -1,6 +1,7 @@
 //! Game state that is synchronized between several different players.
 
-use state::{Action, GameParameters, Player, State};
+use state::{Action, Player, State};
+use map::MapParameters;
 
 /// A `SynchronizedState` takes a `State` and communicates with other players to
 /// ensure that actions and turns are applied consistently for everyone.
@@ -36,7 +37,7 @@ impl SynchronizedState {
 
     /// Create a new server SynchronizedState, listening on the address
     /// `server`, using `parameters` to construct the initial game state.
-    pub fn new_server(/* server: SocketAddr, */ parameters: GameParameters)
+    pub fn new_server(/* server: SocketAddr, */ parameters: MapParameters)
                   -> SynchronizedState
     {
         SynchronizedState {

@@ -30,11 +30,10 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new(graph: SquareGrid,
-               sources: Vec<Node>,
-               player_colors: Vec<(u8, u8, u8)>)
-               -> Map
-    {
+    pub fn new(params: MapParameters) -> Map {
+        let MapParameters { size, sources, player_colors } = params;
+        let graph = SquareGrid::new(size.0, size.1);
+
         // Compute the transformation from graph space, where points run from
         // (0, 0) to upper_right, to game space, where points run from (-1, -1)
         // to (1,1).
@@ -51,7 +50,21 @@ impl Map {
         let game_to_graph = inverse(graph_to_game)
             .expect("graph_to_game transformation should be invertible");
 
-        Map { graph: graph, sources, graph_to_game,
+        Map { graph, sources, graph_to_game,
               game_to_graph, game_aspect, player_colors }
     }
+}
+
+/// A set of parameters that can be used to initialize a map.
+pub struct MapParameters {
+    /// The dimensions of the board.
+    pub size: (usize, usize),
+
+    /// The position of the sources on the board. The number of players is the
+    /// length of this vector.
+    pub sources: Vec<Node>,
+
+    /// The color assigned to each player, as an RGB triplet. This must be the
+    /// same length as `sources`.
+    pub player_colors: Vec<(u8, u8, u8)>
 }

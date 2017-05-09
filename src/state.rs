@@ -16,8 +16,7 @@
 //!   only then is the `State` affected.
 
 use graph::{Node, Graph};
-use map::Map;
-use square::SquareGrid;
+use map::{Map, MapParameters};
 use xorshift::XorShift128Plus;
 
 use rand::Rng;
@@ -73,9 +72,8 @@ fn index_mut_pair<T>(slice: &mut [T], i: usize, j: usize) -> (&mut T, &mut T) {
 }
 
 impl State {
-    pub fn new(params: GameParameters) -> State {
-        let graph = SquareGrid::new(params.board.0, params.board.1);
-        let map = Arc::new(Map::new(graph, params.sources, params.colors));
+    pub fn new(params: MapParameters) -> State {
+        let map = Arc::new(Map::new(params));
 
         let mut nodes: Vec<Option<Occupied>> = repeat(None).take(map.graph.nodes()).collect();
         // Ensure that each source is occupied by its player.
@@ -445,21 +443,6 @@ pub enum Action {
     /// from `from` to `to`.
     ToggleOutflow { player: Player, from: Node, to: Node },
 }
-
-/// A set of parameters that can be used to initialize a game.
-pub struct GameParameters {
-    /// The dimensions of the board.
-    pub board: (usize, usize),
-
-    /// The position of the sources on the board. The number of players is the
-    /// length of this vector.
-    pub sources: Vec<Node>,
-
-    /// The color assigned to each player, as an RGB triplet. This must be the
-    /// same length as `sources`.
-    pub colors: Vec<(u8, u8, u8)>
-}
-
 
 /// Hashing a state includes everything but the Map.
 impl Hash for State {
