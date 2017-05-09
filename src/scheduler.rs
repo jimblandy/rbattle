@@ -3,7 +3,7 @@
 use state::Player;
 use state::{Action, State};
 
-use futures::sync::oneshot;
+use std::sync::mpsc::Sender;
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -12,10 +12,9 @@ use std::mem::replace;
 /// A `Scheduler` collects actions from all players, and then broadcasts the
 /// full list once everyone has submitted their moves for that turn.
 ///
-/// When a player submits their moves, they provide a
-/// `oneshot` future on which `Scheduler` should send the full move list once it
-/// is available.
-struct Scheduler {
+/// When a player submits their moves, they provide a `Sender` on which
+/// `Scheduler` should send the full move list once it is available.
+pub struct Scheduler {
     // The number of the last turn we broadcast out.
     turn: usize,
 
@@ -31,11 +30,11 @@ struct Scheduler {
     // we apply all the actions to our state in a given order, compute the new
     // state's checksum, and then transmit the collected moves to all the
     // players.
-    pending_actions: Vec<Option<(PlayerActions, oneshot::Sender<CollectedMoves>)>>
+    pending_actions: Vec<Option<(PlayerActions, Sender<CollectedActions>)>>
 }
 
 impl Scheduler {
-    fn new(initial_state: State) -> Scheduler {
+    pub fn new(initial_state: State) -> Scheduler {
         let num_players = initial_state.map.player_colors.len();
         let mut pending_actions = Vec::new();
         for _ in 0..num_players {
@@ -46,7 +45,7 @@ impl Scheduler {
 
     // Add another player to the game. Return its number, or `None` if there is
     // no room for more players.
-    fn player_join(&mut self) -> Option<usize> {
+    pub fn player_join(&mut self) -> Option<usize> {
         if self.joined >= self.pending_actions.len() {
             None
         } else {
@@ -55,9 +54,12 @@ impl Scheduler {
         }
     }
 
-    fn submit_actions(&mut self,
-                      actions: PlayerActions,
-                      reply_to: oneshot::Sender<CollectedMoves>) {
+    // Submit `actions` to be carried out as soon as possible. Request
+    // that a collected list of all players' actions for the current turn
+    // be sent to `reply_to`.
+    pub fn submit_actions(&mut self,
+                          actions: PlayerActions,
+                          reply_to: Sender<CollectedActions>) {
         assert_eq!(actions.turn, self.turn);
         assert!(self.pending_actions[actions.player.0].is_none());
         let player = actions.player.0;
@@ -91,7 +93,7 @@ impl Scheduler {
             // We are now in the new turn.
             self.turn += 1;
 
-            let collected = CollectedMoves {
+            let collected = CollectedActions {
                 turn: self.turn,
                 actions: collected_actions,
                 state_checksum
@@ -111,7 +113,7 @@ impl Scheduler {
 
 /// A set of actions submitted by a single player on a single turn.
 #[derive(Clone, Debug)]
-struct PlayerActions {
+pub struct PlayerActions {
     // The player submitting these actions.
     player: Player,
 
@@ -122,9 +124,9 @@ struct PlayerActions {
     actions: Vec<Action>,
 }
 
-/// A collection of all moves submitted by all players.
+/// A collection of all actions submitted by all players.
 #[derive(Clone, Debug)]
-struct CollectedMoves {
+pub struct CollectedActions {
     // The turn these moves produce when applied.
     turn: usize,
 
