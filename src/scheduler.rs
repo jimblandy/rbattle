@@ -4,6 +4,11 @@ use state::Player;
 use state::{Action, State, SerializableState};
 
 use std::mem::replace;
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// The shortest amount of time a turn is allowed to take, in nanoseconds.
+const MIN_DELAY_NS: u32 = 016_000_000;
 
 /// A `Scheduler` collects actions from all players, and then broadcasts the
 /// full list once everyone has submitted their moves for that turn.
@@ -11,19 +16,23 @@ use std::mem::replace;
 /// When a player submits their moves, they provide a `Sender` on which
 /// `Scheduler` should send the full move list once it is available.
 pub struct Scheduler {
-    // The number of the last turn we broadcast out.
+    /// The number of the last turn we broadcast out.
     turn: usize,
 
-    // A scheduler actually maintains its own copy of the game state, for
-    // generating checksums to send to clients.
+    /// A scheduler actually maintains its own copy of the game state, for
+    /// generating checksums to send to clients.
     state: State,
 
-    // A vector recording submitted actions and reply channels for every joined
-    // player; the `i`'th element is for `Player(i)`. Once this has actions for
-    // every joined player, we apply all the actions to our state in a given
-    // order, compute the new state's checksum, and then transmit the collected
-    // moves to all the players.
-    pending_actions: Vec<Option<(PlayerActions, Box<Notifier + Send>)>>
+    /// A vector recording submitted actions and reply channels for every joined
+    /// player; the `i`'th element is for `Player(i)`. Once this has actions for
+    /// every joined player, we apply all the actions to our state in a given
+    /// order, compute the new state's checksum, and then transmit the collected
+    /// moves to all the players.
+    pending_actions: Vec<Option<(PlayerActions, Box<Notifier + Send>)>>,
+
+    /// The last time we broadcast out turns to everyone. We make sure not
+    /// to send out the next move until at least MIN_DELAY_NS after this time.
+    last_broadcast: Instant,
 }
 
 /// Something that can notify a player of a turn's actions when they have been
@@ -34,7 +43,9 @@ pub trait Notifier {
 
 impl Scheduler {
     pub fn new(initial_state: State) -> Scheduler {
-        Scheduler { turn: 0, state: initial_state, pending_actions: vec![] }
+        Scheduler { turn: 0, state: initial_state, pending_actions: vec![],
+                    last_broadcast: Instant::now()
+        }
     }
 
     // Add another player to the game. If there is room, return the player's
@@ -61,6 +72,15 @@ impl Scheduler {
 
         // Have all the players that have joined finally submitted an action?
         if self.pending_actions.iter().all(|o| o.is_some()) {
+
+            // Make sure at least MIN_DELAY_NS nanoseconds have elapsed since
+            // our last broadcast.
+            let now = Instant::now();
+            let since_last = now - self.last_broadcast;
+            if since_last < Duration::new(0, MIN_DELAY_NS) {
+                thread::sleep(Duration::new(0, MIN_DELAY_NS) - since_last);
+            }
+
             // Grab the list of pending actions and reset it for the next turn.
             let pendings = replace(&mut self.pending_actions, vec![]);
 
@@ -96,6 +116,8 @@ impl Scheduler {
             for reply_to in collected_reply_tos {
                 reply_to.notify(collected.clone());
             }
+
+            self.last_broadcast = now;
         }
     }
 }
