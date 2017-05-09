@@ -89,18 +89,18 @@ fn run() -> Result<()> {
         .parse()
         .expect("couldn't parse address");
 
-    let mut participant: Box<Participant> =
+    let mut participant =
         if mode == "server" {
-            Box::new(Participant::new_server(socket_addr, MapParameters {
+            Participant::new_server(socket_addr, MapParameters {
                 size: (15, 15),
                 sources: vec![32, 42, 182, 192],
                 player_colors: vec![(0x9f, 0x20, 0xb1), (0xe0, 0x6f, 0x3a),
                                     (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1)]
-            }))
+            })
         } else if mode == "client" {
-            panic!("not implemented yet");
+            Participant::new_client(socket_addr)?
         } else {
-            usage();
+            usage()
         };
 
     let map = participant.snapshot().map.clone();
@@ -115,7 +115,7 @@ fn run() -> Result<()> {
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
 
-    let mut mouse = Mouse::new(Player(0), map.clone());
+    let mut mouse = Mouse::new(participant.get_player(), map.clone());
 
     loop {
         // Take a snapshot of the current state and operate on that.
