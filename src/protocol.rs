@@ -147,7 +147,8 @@ impl Shared {
         // We should have applied the same actions to the same state,
         // and gotten the same checksum.
         assert_eq!(self.state.checksum(),
-                   collected_actions.state_checksum);
+                   collected_actions.state_checksum,
+                   "Game state checksums have diverged!");
 
         // Now that we've applied the actions from the prior turn, return
         // whatever actions have been queued up in the mean time as our next
