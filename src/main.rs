@@ -38,7 +38,7 @@ use drawer::Drawer;
 use map::MapParameters;
 use math::{apply, compose};
 use mouse::Mouse;
-use protocol::{Participant, Server};
+use protocol::Participant;
 use state::Player;
 use visible_graph::GraphPt;
 
@@ -91,7 +91,7 @@ fn run() -> Result<()> {
 
     let mut participant: Box<Participant> =
         if mode == "server" {
-            Box::new(Server::new(socket_addr, MapParameters {
+            Box::new(Participant::new_server(socket_addr, MapParameters {
                 size: (15, 15),
                 sources: vec![32, 42, 182, 192],
                 player_colors: vec![(0x9f, 0x20, 0xb1), (0xe0, 0x6f, 0x3a),

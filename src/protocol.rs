@@ -41,12 +41,13 @@ use state::{Action, Player, SerializableState, State};
 use futures::{Future};
 use futures::future::ok;
 use futures::sync::oneshot;
+use serde_json;
 use tokio_proto::TcpServer;
 use tokio_service::Service;
 
-use std::io::{Error, ErrorKind};
+use std::io::{BufRead, BufReader, BufWriter, Error, ErrorKind, Write};
 use std::mem::replace;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, TcpStream};
 use std::sync::{Arc, mpsc, Mutex};
 use std::thread;
 
@@ -119,19 +120,6 @@ impl Service for SchedulerService {
     }
 }
 
-/// A participant that has joined a game. This is the common trait that both client
-/// and server sides implement.
-pub trait Participant {
-    /// Return a snapshot of the current state.
-    fn snapshot(&self) -> State;
-
-    /// Return the player number of this SynchronizedState.
-    fn get_player(&self) -> Player;
-
-    /// Submit `action` to be performed as soon as possible.
-    fn request_action(&mut self, action: Action);
-}
-
 /// Information shared between the main thread and helper threads.
 struct Shared {
     /// The player this state represents. Assigned by the server.
@@ -172,7 +160,7 @@ impl Shared {
     }
 }
 
-pub struct Server {
+pub struct Participant {
     /// The player on the local machine.
     player: Player,
 
@@ -181,8 +169,8 @@ pub struct Server {
     shared: Arc<Mutex<Shared>>,
 }
 
-impl Server {
-    pub fn new(addr: SocketAddr, params: MapParameters) -> Server {
+impl Participant {
+    pub fn new_server(addr: SocketAddr, params: MapParameters) -> Participant {
         assert!(params.player_colors.len() >= 1);
 
         // Create a scheduler to coordinate turns amongst the players,
@@ -214,6 +202,7 @@ impl Server {
                 // think about lock ordering.
                 drop(guard);
 
+                // Submit any requested next actions for the next turn.
                 let mut guard = scheduler_handle.lock().unwrap();
                 guard.submit_actions(next_actions, Box::new(sender_handle.clone()));
             }
@@ -240,22 +229,117 @@ impl Server {
             guard.submit_actions(actions, Box::new(sender));
         }
 
-        Server { player, shared }
+        Participant { player, shared }
     }
-}
 
-impl Participant for Server {
+    pub fn new_client(addr: SocketAddr) -> Result<Participant, Error> {
+        let stream = TcpStream::connect(addr)?;
+        stream.set_nodelay(true)?;
+
+        let (sender, receiver) = mpsc::channel();
+
+        fn setup(reader: &mut BufReader<&TcpStream>, writer: &mut BufWriter<&TcpStream>)
+                 -> Result<Shared, Error>
+        {
+            writeln!(writer, "{}", serde_json::to_string(&Request::Join)?)?;
+            writer.flush()?;
+            let mut response = String::new();
+            reader.read_line(&mut response)?;
+            let response = serde_json::from_str(&response)?;
+            let (player, state) = match response {
+                Response::GameFull => {
+                    return Err(Error::new(ErrorKind::Other,
+                                          "Connection rejected, game full."));
+                }
+                Response::Welcome { player, state } => (player, state),
+                Response::Turn(_) => {
+                    return Err(Error::new(ErrorKind::Other,
+                                          "Received unexpected Response::Turn on Join"));
+                }
+            };
+
+            let shared = Shared {
+                player,
+                state: State::from_serializable(state),
+                pending: vec![]
+            };
+
+            // Get the ball rolling by submitting an empty first move.
+            let actions = PlayerActions {
+                player,
+                turn: shared.state.turn,
+                actions: vec![]
+            };
+            writeln!(writer, "{}",
+                     serde_json::to_string(&Request::Actions(actions))?)?;
+            writer.flush()?;
+
+            Ok(shared)
+        }
+
+        // Spawn a thread to read collected actions, apply them to our state,
+        // and submit any accumulated actions requested.
+        thread::spawn(move || {
+            let stream = stream; // take ownership
+            let mut reader = BufReader::new(&stream);
+            let mut writer = BufWriter::new(&stream);
+
+            let shared = match setup(&mut reader, &mut writer) {
+                Err(e) => {
+                    sender.send(Err(e)).unwrap();
+                    return;
+                }
+                Ok(shared) => shared
+            };
+
+            let player = shared.player;
+            let shared = Arc::new(Mutex::new(shared));
+            sender.send(Ok((player, shared.clone()))).unwrap();
+            drop(sender);
+
+            for line in reader.lines() {
+                let line = line.expect("error reading response from server");
+                let response: Response = serde_json::from_str(&line)
+                    .expect("error parsing response from server");
+                let collected_actions = match response {
+                    Response::Turn(collected_actions) => collected_actions,
+                    otherwise => {
+                        panic!("Unexpected response from server: {:?}", otherwise);
+                    }
+                };
+
+                let mut guard = shared.lock().unwrap();
+                let next_actions = guard.apply_collected_actions(collected_actions);
+
+                // Drop the guard on the shared data first, to avoid having to
+                // think about lock ordering.
+                drop(guard);
+
+                // Submit any requested next actions for the next turn.
+                let actions = serde_json::to_string(&Request::Actions(next_actions))
+                    .expect("failed to jsonify next actions");
+                writeln!(writer, "{}", actions)
+                    .expect("Sending next actions to server");
+                writer.flush().unwrap();
+            }
+        });
+
+        let (player, shared) = receiver.recv().unwrap()?;
+
+        Ok(Participant { player, shared })
+    }
+
     /// Return a snapshot of the current state.
-    fn snapshot(&self) -> State {
+    pub fn snapshot(&self) -> State {
         let guard = self.shared.lock().unwrap();
         guard.state.clone()
     }
 
     /// Return the player number of this SynchronizedState.
-    fn get_player(&self) -> Player { self.player }
+    pub fn get_player(&self) -> Player { self.player }
 
     /// Submit `action` to be performed as soon as possible.
-    fn request_action(&mut self, action: Action) {
+    pub fn request_action(&mut self, action: Action) {
         let mut guard = self.shared.lock().unwrap();
         guard.pending.push(action);
     }
