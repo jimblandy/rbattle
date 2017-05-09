@@ -167,7 +167,9 @@ impl State {
     pub fn advance(&mut self) {
         self.turn += 1;
         self.flow();
-        self.generate_goop();
+        if self.turn & 1 == 0 {
+            self.generate_goop();
+        }
     }
 
     /// Apply `action` to this state.
