@@ -363,9 +363,53 @@ fn test_attack_empty_cell() {
     // This is an attack!
     assert_eq!(simulate_flow(&mut florin, &mut guilder), true);
     // Afterwards, player 1 controls Guilder. Note that Guilder's `.outflows`
-    // field is cleared, since a new boss is in town.
+    // field is cleared. Since Guilder is being attacked, flow through it is inhibited.
     assert_eq!(florin, Some(Occupied { player: Player(1), outflows: vec![2], goop: 2 }));
     assert_eq!(guilder, Some(Occupied { player: Player(1), outflows: vec![], goop: 1 }));
+
+    // The same thing happens even if Florin invades with its last unit of goop.
+    florin.as_mut().unwrap().goop = 1;
+    guilder = Some(Occupied { player: Player(2), outflows: vec![1], goop: 0 });
+    assert_eq!(simulate_flow(&mut florin, &mut guilder), true);
+    assert_eq!(florin, Some(Occupied { player: Player(1), outflows: vec![2], goop: 0 }));
+    assert_eq!(guilder, Some(Occupied { player: Player(1), outflows: vec![], goop: 1 }));
+}
+
+#[test]
+fn test_attack_occupied_cell() {
+    // Florin can attack Guilder when both cells have positive amounts of goop.
+    let mut florin  = Some(Occupied { player: Player(1), outflows: vec![2], goop: 2 });
+    let mut guilder = Some(Occupied { player: Player(2), outflows: vec![1], goop: 2 });
+
+    assert_eq!(simulate_flow(&mut florin, &mut guilder), true);
+    // In this case, the outcome is that one unit of Player 1 goop flows into
+    // Guilder, *cancelling out* one unit of Player 2 goop. Again, Guilder's
+    // `.outflows` field is cleared.
+    assert_eq!(florin,  Some(Occupied { player: Player(1), outflows: vec![2], goop: 1 }));
+    assert_eq!(guilder, Some(Occupied { player: Player(2), outflows: vec![], goop: 1 }));
+
+    // Now Player 2 quickly clicks on the boundary, populating `.outflows`
+    // again, in an attempt to counter-attack.
+    guilder.as_mut().unwrap().outflows = vec![1];
+
+    // In the next tick of the game, the same thing happens again. This time,
+    // Guilder is reduced to 0 goop, so the attacker (Player 1) is considered
+    // victorious and gains control.
+    assert_eq!(simulate_flow(&mut florin, &mut guilder), true);
+    assert_eq!(florin,  Some(Occupied { player: Player(1), outflows: vec![2], goop: 0 }));
+    assert_eq!(guilder, Some(Occupied { player: Player(1), outflows: vec![], goop: 0 }));
+}
+
+#[test]
+fn test_attack_occupied_cell_losing() {
+    // Florin is again attacking Guilder, but this time it's a losing battle.
+    let mut florin  = Some(Occupied { player: Player(1), outflows: vec![2], goop: 1 });
+    let mut guilder = Some(Occupied { player: Player(2), outflows: vec![1], goop: MAX_GOOP });
+
+    // This still counts as an attack, and Guilder's outflows are still inhibited.
+    assert_eq!(simulate_flow(&mut florin, &mut guilder), true);
+    assert_eq!(florin,  Some(Occupied { player: Player(1), outflows: vec![2], goop: 0 }));
+    assert_eq!(guilder, Some(Occupied { player: Player(2), outflows: vec![], goop: MAX_GOOP - 1 }));
 }
 
 #[test]
