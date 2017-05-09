@@ -18,11 +18,13 @@
 use graph::Node;
 use map::Map;
 use square::SquareGrid;
-use std::sync::Arc;
-use rand::{Rng, SeedableRng, XorShiftRng};
 use xorshift::XorShift128Plus;
 
+use rand::Rng;
+
+use std::hash::{Hash, Hasher};
 use std::iter::repeat;
+use std::sync::Arc;
 
 /// The complete state of an RBattle game board.
 #[derive(Clone)]
@@ -38,11 +40,11 @@ pub struct State {
 }
 
 /// A player id number.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Player(pub usize);
 
 /// The state of a node that is occupied by some player.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq)]
 pub struct Occupied {
     /// The player who controls this node.
     pub player: Player,
@@ -398,3 +400,13 @@ pub struct GameParameters {
     pub colors: Vec<(u8, u8, u8)>
 }
 
+
+/// Hashing a state includes everything but the Map.
+impl Hash for State {
+    fn hash<H>(&self, state: &mut H)
+        where H: Hasher
+    {
+        self.nodes.hash(state);
+        self.rng.hash(state);
+    }
+}
