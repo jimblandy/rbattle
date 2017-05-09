@@ -48,12 +48,12 @@ impl Scheduler {
     // Add another player to the game. If there is room, return the player's
     // number and a representation of the current game state. Return `None` if
     // there is no room for more players.
-    pub fn player_join(&mut self) -> Option<(usize, SerializableState)> {
+    pub fn player_join(&mut self) -> Option<(Player, SerializableState)> {
         if self.joined >= self.pending_actions.len() {
             None
         } else {
             self.joined += 1;
-            Some((self.joined - 1, self.state.serializable()))
+            Some((Player(self.joined - 1), self.state.serializable()))
         }
     }
 
@@ -113,24 +113,24 @@ impl Scheduler {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PlayerActions {
     // The player submitting these actions.
-    player: Player,
+    pub player: Player,
 
     // The turn number they believe they're on.
-    turn: usize,
+    pub turn: usize,
 
     // The actions they wish to submit.
-    actions: Vec<Action>,
+    pub actions: Vec<Action>,
 }
 
 /// A collection of all actions submitted by all players.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CollectedActions {
     // The turn these moves produce when applied.
-    turn: usize,
+    pub turn: usize,
 
     // The actions to apply to the prior state.
-    actions: Vec<Action>,
+    pub actions: Vec<Action>,
 
     // The hash value of the State that should result, as a checksum.
-    state_checksum: u64
+    pub state_checksum: u64
 }

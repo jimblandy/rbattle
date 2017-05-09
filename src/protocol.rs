@@ -36,7 +36,7 @@
 use map::MapParameters;
 use jsonproto::JsonProto;
 use scheduler::{CollectedActions, Notifier, PlayerActions, Scheduler};
-use state::{SerializableState, State};
+use state::{Action, Player, SerializableState, State};
 
 use futures::{Future};
 use futures::future::ok;
@@ -45,8 +45,10 @@ use tokio_proto::TcpServer;
 use tokio_service::Service;
 
 use std::io::{Error, ErrorKind};
+use std::mem::replace;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, mpsc, Mutex};
+use std::thread;
 
 #[derive(Clone)]
 struct SchedulerService {
@@ -63,7 +65,7 @@ enum Request {
 /// The server's responses to those requests.
 #[derive(Debug, Serialize, Deserialize)]
 enum Response {
-    Welcome { player: usize, state: SerializableState },
+    Welcome { player: Player, state: SerializableState },
     GameFull,
     Turn(CollectedActions)
 }
@@ -74,6 +76,15 @@ impl Notifier for oneshot::Sender<Response> {
     fn notify(self: Box<Self>, turn: CollectedActions) {
         self.send(Response::Turn(turn))
             .expect("oneshot notifier receiver died");
+    }
+}
+
+/// This impl allows `Scheduler` to send the actions collected for a turn to the
+/// local game.
+impl Notifier for mpsc::Sender<CollectedActions> {
+    fn notify(self: Box<Self>, turn: CollectedActions) {
+        self.send(turn)
+            .expect("mpsc notifier receiver died");
     }
 }
 
@@ -108,11 +119,103 @@ impl Service for SchedulerService {
     }
 }
 
-pub fn start_server(addr: SocketAddr,
-                    parameters: MapParameters) {
-    let initial_state = State::new(parameters);
-    let scheduler = Arc::new(Mutex::new(Scheduler::new(initial_state)));
+/// A participant that has joined a game. This is the common trait that both client
+/// and server sides implement.
+trait Participant {
+    /// Return a snapshot of the current state.
+    fn snapshot(&self) -> State;
 
-    let server = TcpServer::new(JsonProto::<Request, Response>::new(), addr);
-    server.serve(move || Ok(SchedulerService { scheduler: scheduler.clone() }));
+    /// Return the player number of this SynchronizedState.
+    fn get_player(&self) -> Player;
+
+    /// Submit `action` to be performed as soon as possible.
+    fn request_action(&mut self, action: Action);
+}
+
+/// Information shared between the main thread and helper threads.
+struct Shared {
+    /// The player this state represents. Assigned by the server.
+    player: Player,
+
+    /// The current state of the game.
+    state: State,
+
+    /// The queue of actions to be sent to the scheduler on the next turn.
+    pending: Vec<Action>
+}
+
+struct Server {
+    shared: Arc<Mutex<Shared>>,
+
+    /// The scheduler we interact with to take turns.
+    scheduler: Arc<Mutex<Scheduler>>
+}
+
+impl Server {
+    fn new(addr: SocketAddr, params: MapParameters) -> Server {
+        assert!(params.player_colors.len() >= 1);
+
+        // Create a scheduler to coordinate turns amongst the players,
+        // and add ourselves as the first player.
+        let mut scheduler = Scheduler::new(State::new(params));
+        let (player, current_state) = scheduler.player_join().unwrap();
+
+        let scheduler = Arc::new(Mutex::new(scheduler));
+
+        let shared = Arc::new(Mutex::new(Shared {
+            player,
+            state: State::from_serializable(current_state),
+            pending: vec![]
+        }));
+
+        let (sender, receiver): (mpsc::Sender<CollectedActions>, _) = mpsc::channel();
+
+        // Create a thread to apply actions received from the scheduler.
+        // These variables get moved into the closure.
+        let shared_handle = shared.clone();
+        let scheduler_handle = scheduler.clone();
+        thread::spawn(move || {
+            for collected_actions in receiver {
+                let mut guard = shared_handle.lock().unwrap();
+                assert_eq!(guard.state.turn, collected_actions.turn);
+
+                for action in collected_actions.actions {
+                    guard.state.take_action(&action);
+                }
+
+                // We should have applied the same actions to the same state,
+                // and gotten the same checksum.
+                assert_eq!(guard.state.checksum(),
+                           collected_actions.state_checksum);
+
+                // Now that we've applied the actions from the prior turn,
+                // submit whatever actions have been queued up in the mean time
+                // as our next turn.
+                let actions = PlayerActions {
+                    player: guard.player,
+                    turn: guard.state.turn,
+                    actions: replace(&mut guard.pending, vec![])
+                };
+
+                // But drop the guard on the shared data first, to avoid
+                // having to think about lock ordering.
+                drop(guard);
+
+                let mut guard = scheduler_handle.lock().unwrap();
+                guard.submit_actions(actions, Box::new(sender.clone()));
+            }
+        });
+
+        // Spawn off a second thread to run the server.
+        // This variable gets moved into the closure.
+        let scheduler_handle = scheduler.clone();
+        thread::spawn(move || {
+            let server = TcpServer::new(JsonProto::<Request, Response>::new(), addr);
+            server.serve(move || {
+                Ok(SchedulerService { scheduler: scheduler_handle.clone() })
+            });
+        });
+
+        Server { shared, scheduler }
+    }
 }
