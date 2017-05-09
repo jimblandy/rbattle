@@ -121,7 +121,7 @@ impl Service for SchedulerService {
 
 /// A participant that has joined a game. This is the common trait that both client
 /// and server sides implement.
-trait Participant {
+pub trait Participant {
     /// Return a snapshot of the current state.
     fn snapshot(&self) -> State;
 
@@ -144,7 +144,12 @@ struct Shared {
     pending: Vec<Action>
 }
 
-struct Server {
+pub struct Server {
+    /// The player on the local machine.
+    player: Player,
+
+    /// Information shared between the main thread, the server thread, and the
+    /// scheduler thread.
     shared: Arc<Mutex<Shared>>,
 
     /// The scheduler we interact with to take turns.
@@ -152,7 +157,7 @@ struct Server {
 }
 
 impl Server {
-    fn new(addr: SocketAddr, params: MapParameters) -> Server {
+    pub fn new(addr: SocketAddr, params: MapParameters) -> Server {
         assert!(params.player_colors.len() >= 1);
 
         // Create a scheduler to coordinate turns amongst the players,
@@ -216,6 +221,23 @@ impl Server {
             });
         });
 
-        Server { shared, scheduler }
+        Server { player, shared, scheduler }
+    }
+}
+
+impl Participant for Server {
+    /// Return a snapshot of the current state.
+    fn snapshot(&self) -> State {
+        let guard = self.shared.lock().unwrap();
+        guard.state.clone()
+    }
+
+    /// Return the player number of this SynchronizedState.
+    fn get_player(&self) -> Player { self.player }
+
+    /// Submit `action` to be performed as soon as possible.
+    fn request_action(&mut self, action: Action) {
+        let mut guard = self.shared.lock().unwrap();
+        guard.pending.push(action);
     }
 }
