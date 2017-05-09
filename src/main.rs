@@ -6,8 +6,15 @@
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate glium;
 #[macro_use] extern crate serde_derive;
-extern crate rand;
+extern crate bytes;
 extern crate futures;
+extern crate rand;
+extern crate serde;
+extern crate serde_json;
+extern crate tokio_core;
+extern crate tokio_io;
+extern crate tokio_proto;
+extern crate tokio_service;
 
 #[cfg(test)]
 #[macro_use]
@@ -16,6 +23,7 @@ mod test_utils;
 mod drawer;
 mod errors;
 mod graph;
+mod jsonproto;
 mod map;
 mod math;
 mod mouse;
