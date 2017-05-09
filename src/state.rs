@@ -21,6 +21,7 @@ use xorshift::XorShift128Plus;
 
 use rand::Rng;
 
+use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::iter::repeat;
 use std::sync::Arc;
@@ -189,6 +190,13 @@ impl State {
                 }
             }
         }
+    }
+
+    // Return a checksum over the contents of this state.
+    pub fn checksum(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
     }
 }
 

@@ -3,8 +3,6 @@
 use state::Player;
 use state::{Action, State, SerializableState};
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use std::mem::replace;
 
 /// A `Scheduler` collects actions from all players, and then broadcasts the
@@ -89,10 +87,7 @@ impl Scheduler {
                 collected_reply_tos.push(reply_to);
             }
 
-            // Compute a checksum for the resulting state.
-            let mut hasher = DefaultHasher::new();
-            self.state.hash(&mut hasher);
-            let state_checksum = hasher.finish();
+            let state_checksum = self.state.checksum();
 
             // We are now in the new turn.
             self.turn += 1;
