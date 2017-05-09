@@ -290,7 +290,7 @@ fn test_no_flow_from_empty_cell() {
     assert_eq!(simulate_flow(&mut florin, &mut guilder), false);
     assert_eq!(florin, Some(Occupied { player: Player(1), outflows: vec![2, 3, 4], goop: 0 }));
     assert_eq!(guilder, Some(Occupied { player: Player(2), outflows: vec![5, 6], goop: 1 }));
-    
+
     // Same deal even if Guilder also has no goop.
     guilder = Some(Occupied { player: Player(2), outflows: vec![5, 6], goop: 0 });
     assert_eq!(simulate_flow(&mut florin, &mut guilder), false);
