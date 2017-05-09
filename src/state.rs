@@ -219,58 +219,7 @@ impl State {
 /// know about this, because in this case it must stop `to_node`'s outflows.)
 ///
 fn simulate_flow(from_node: &mut Option<Occupied>, to_node: &mut Option<Occupied>) -> bool {
-    match (from_node, to_node) {
-        // We shouldn't have generated a pair for an empty source, and
-        // when we clear a node we're supposed to remove pairs from
-        // `outflow` that originate there.
-        (&mut None, _) => panic!("outflow from empty node"),
-
-        // Source has no goop. No effect.
-        (&mut Some(Occupied { goop: 0, .. }), _) => false,
-
-        // Goop flowing into an unoccupied node. New player claims ownership.
-        (&mut Some(Occupied { player, ref mut goop, .. }),
-         &mut ref mut to @ None) => {
-            *goop -= 1;
-            *to = Some(Occupied { player, outflows: vec![], goop: 1 });
-            false
-        },
-
-        // Goop flowing into a node occupied by the same player.
-        (&mut Some(Occupied { player: from_player, goop: ref mut from_goop, .. }),
-         &mut Some(Occupied { player: to_player,   goop: ref mut to_goop, .. }))
-            if from_player == to_player =>
-        {
-            if *from_goop > 0 && *to_goop < MAX_GOOP {
-                *from_goop -= 1;
-                *to_goop += 1;
-            }
-            false
-        }
-
-        // Goop flowing into a node occupied by another player, but
-        // doesn't clear it. All outflow from destination stopped.
-        (&mut Some(Occupied { goop: ref mut from_goop, .. }),
-         &mut Some(Occupied { outflows: ref mut to_outflows,
-                               goop:     ref mut to_goop, .. }))
-            if *to_goop > 1 =>
-        {
-            *from_goop -= 1;
-            *to_goop -= 1;
-            to_outflows.clear();
-            true
-        },
-
-        // Goop flowing into an occupied node, succeeds in clearing it.
-        (&mut Some(Occupied { player, goop: ref mut from_goop, .. }),
-         &mut Some(ref mut target)) => {
-            *from_goop -= 1;
-            target.player = player;
-            target.outflows.clear();
-            target.goop = 1 - target.goop;
-            true
-        }
-    }
+    true
 }
 
 #[test]
