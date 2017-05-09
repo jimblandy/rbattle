@@ -47,7 +47,6 @@ use glium::Surface;
 
 use std::io::Write;
 use std::net::SocketAddr;
-use std::time::Instant;
 
 // This only gives access within this module. Make this `pub use errors::*;`
 // instead if the types must be accessible from other modules (e.g., within
@@ -155,12 +154,4 @@ fn run() -> Result<()> {
             }
         }
     }
-}
-
-/// Return the number of seconds that have elasped since `instant`. Partial
-/// seconds are returned as fractional values.
-fn elapsed_since(instant: &Instant) -> f64 {
-    let elapsed = instant.elapsed();
-    elapsed.as_secs() as f64 +
-        (elapsed.subsec_nanos() as f64 / 1e9)
 }

@@ -18,7 +18,6 @@
 //! When applied to an [f32; 2] point, the point is extended with an implicit
 //! `1.0` to make it a homogeneous coordinate.
 
-pub type Vector = [f32; 2];
 pub type Matrix = [[f32; 3]; 3];
 
 /// Return a matrix that scales a homogeneous 2D point by `sx` and `sy` along the
