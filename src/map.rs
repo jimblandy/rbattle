@@ -1,6 +1,7 @@
 use graph::Node;
 use math::{compose, inverse, translate_transform, scale_transform};
 use visible_graph::{GraphPt, VisibleGraph};
+use square::SquareGrid;
 
 /// A map on which an RBattle game is played.
 ///
@@ -9,7 +10,7 @@ use visible_graph::{GraphPt, VisibleGraph};
 #[derive(Debug)]
 pub struct Map {
     /// The graph of nodes comprising this map's territory.
-    pub graph: Box<VisibleGraph>,
+    pub graph: SquareGrid,
 
     /// The nodes of `graph` that contain goop sources.
     pub sources: Vec<Node>,
@@ -29,11 +30,10 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn new<G>(graph: G,
-                  sources: Vec<Node>,
-                  player_colors: Vec<(u8, u8, u8)>)
-                  -> Map
-        where G: 'static + VisibleGraph
+    pub fn new(graph: SquareGrid,
+               sources: Vec<Node>,
+               player_colors: Vec<(u8, u8, u8)>)
+               -> Map
     {
         // Compute the transformation from graph space, where points run from
         // (0, 0) to upper_right, to game space, where points run from (-1, -1)
@@ -51,7 +51,7 @@ impl Map {
         let game_to_graph = inverse(graph_to_game)
             .expect("graph_to_game transformation should be invertible");
 
-        Map { graph: Box::new(graph), sources, graph_to_game,
+        Map { graph: graph, sources, graph_to_game,
               game_to_graph, game_aspect, player_colors }
     }
 }

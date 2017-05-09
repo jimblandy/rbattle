@@ -7,7 +7,7 @@
 use graph::Node;
 use map::Map;
 use state::{Action, Player, State};
-use visible_graph::GraphPt;
+use visible_graph::{GraphPt, VisibleGraph};
 
 use std::sync::Arc;
 

@@ -15,7 +15,7 @@
 //!   When the user actually completes an interaction with an interface element,
 //!   only then is the `State` affected.
 
-use graph::Node;
+use graph::{Node, Graph};
 use map::Map;
 use square::SquareGrid;
 use xorshift::XorShift128Plus;

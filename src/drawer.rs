@@ -30,11 +30,12 @@
 //!   VisibleGraph::bounds().
 
 use errors::*;
+use graph::Graph;
 use map::Map;
 use state::{State, MAX_GOOP, Occupied};
 use math::{compose, inverse, midpoint, scale_transform, translate_transform};
 use mouse::{Mouse, Display, OutflowState};
-use visible_graph::GraphPt;
+use visible_graph::{GraphPt, VisibleGraph};
 
 use glium::{Blend, DrawParameters, Frame, IndexBuffer, Program, Surface, VertexBuffer};
 use glium::backend::Facade;
