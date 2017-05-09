@@ -68,15 +68,11 @@ enum Response {
     Turn(CollectedActions)
 }
 
-/// This implements scheduler::Notifier, so that Scheduler can tell
-/// SchedulerService when a client should receive a Response::Turn message.
-struct OneshotNotifier {
-    sender: oneshot::Sender<Response>
-}
-
-impl Notifier for OneshotNotifier {
+/// This impl allows `Scheduler` to resolve promises returned by
+/// SchedulerService::call.
+impl Notifier for oneshot::Sender<Response> {
     fn notify(self: Box<Self>, turn: CollectedActions) {
-        self.sender.send(Response::Turn(turn))
+        self.send(Response::Turn(turn))
             .expect("oneshot notifier receiver died");
     }
 }
@@ -100,9 +96,8 @@ impl Service for SchedulerService {
             },
             Request::Actions(actions) => {
                 let (sender, receiver) = oneshot::channel();
-                let notifier = OneshotNotifier { sender };
                 let mut guard = self.scheduler.lock().unwrap();
-                guard.submit_actions(actions, Box::new(notifier));
+                guard.submit_actions(actions, Box::new(sender));
 
                 // Turn oneshot errors into io::Error, as this service requires.
                 let receiver = receiver.map_err(|e| Error::new(ErrorKind::Other, e));
