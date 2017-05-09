@@ -39,7 +39,7 @@ use mouse::Mouse;
 use protocol::Participant;
 use visible_graph::GraphPt;
 
-use glium::glutin::{Event, ElementState, MouseButton};
+use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
 use glium::Surface;
 
 use std::io::Write;
@@ -146,6 +146,15 @@ fn run() -> Result<()> {
                     if let Some(action) = mouse.release() {
                         participant.request_action(action);
                     }
+                }
+
+                Event::KeyboardInput(ElementState::Pressed, _,
+                                     Some(VirtualKeyCode::Escape)) => {
+                    std::process::exit(0);
+                }
+                Event::KeyboardInput(ElementState::Pressed, _,
+                                     Some(VirtualKeyCode::W)) => {
+                    std::process::exit(0);
                 }
                 _ => ()
             }
