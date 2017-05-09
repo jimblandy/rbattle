@@ -348,7 +348,6 @@ mod square_grid_as_visible_graph {
         // `boundary_hit` implements, and the value of TOLERANCE. But they
         // should mostly be okay with any reasonable hit definition.
 
-        use graph::Node;
         use super::SquareGrid;
 
         let grid = SquareGrid::new(3, 4);
