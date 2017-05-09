@@ -31,6 +31,9 @@ pub struct State {
     /// The map being played on.
     pub map: Arc<Map>,
 
+    /// The current turn number.
+    pub turn: usize,
+
     /// Which nodes are occupied, and which are vacant. Indexed by node id.
     pub nodes: Vec<Option<Occupied>>,
 
@@ -86,13 +89,14 @@ impl State {
         }
 
         const SEED: [u64; 2] = [0xcd9d5eaaf04bc9a7, 0x4602cc7098d01ef9];
-        State { map, nodes, rng: XorShift128Plus::new(SEED) }
+        State { map, turn: 0, nodes, rng: XorShift128Plus::new(SEED) }
     }
 
     /// Return a SerializableState that can be used to recreate this state.
     pub fn serializable(&self) -> SerializableState {
         SerializableState {
             map: (*self.map).clone(),
+            turn: self.turn,
             nodes: self.nodes.clone(),
             rng: self.rng.clone()
         }
@@ -102,7 +106,12 @@ impl State {
     /// map with the original, but that's just a space optimization; the map is
     /// immutable anyway.
     pub fn from_serializable(ser: SerializableState) -> State {
-        State { map: Arc::new(ser.map), nodes: ser.nodes, rng: ser.rng }
+        State {
+            map: Arc::new(ser.map),
+            turn: ser.turn,
+            nodes: ser.nodes,
+            rng: ser.rng
+        }
     }
 
     /// Let one unit of goop flow through each outflow.
@@ -152,6 +161,7 @@ impl State {
 
     /// Advance `self` to the next state.
     pub fn advance(&mut self) {
+        self.turn += 1;
         self.flow();
         self.generate_goop();
     }
@@ -457,6 +467,7 @@ impl Hash for State {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SerializableState {
     map: Map,
+    turn: usize,
     nodes: Vec<Option<Occupied>>,
     rng: XorShift128Plus
 }

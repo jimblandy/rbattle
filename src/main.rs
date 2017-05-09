@@ -96,7 +96,6 @@ fn run() -> Result<()> {
 
     let mut mouse = Mouse::new(Player(0), map.clone());
 
-    let mut turn = 0;
     let start = Instant::now();
 
     // True if we should run a game step on every frame.
@@ -151,12 +150,11 @@ fn run() -> Result<()> {
         }
 
         if free_running || single_step {
-            println!("Turn {} at {:9.3}s:", turn, elapsed_since(&start));
+            println!("Turn {} at {:9.3}s:", state.turn, elapsed_since(&start));
 
             let start_generation = Instant::now();
             syn_state.advance();
             println!("    advance to next state: {:9.6}s:", elapsed_since(&start_generation));
-            turn += 1;
         }
     }
 }
