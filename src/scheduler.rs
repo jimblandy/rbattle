@@ -47,14 +47,15 @@ impl Scheduler {
         Scheduler { turn: 0, joined: 0, state: initial_state, pending_actions }
     }
 
-    // Add another player to the game. Return its number, or `None` if there is
-    // no room for more players.
-    pub fn player_join(&mut self) -> Option<usize> {
+    // Add another player to the game. If there is room, return the player's
+    // number and a representation of the current game state. Return `None` if
+    // there is no room for more players.
+    pub fn player_join(&mut self) -> Option<(usize, SerializableState)> {
         if self.joined >= self.pending_actions.len() {
             None
         } else {
             self.joined += 1;
-            Some(self.joined - 1)
+            Some(self.joined - 1, self.state.serializable())
         }
     }
 
