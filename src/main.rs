@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 // `error_chain!` can recurse deeply
 #![recursion_limit = "1024"]
 
@@ -39,7 +37,6 @@ use map::MapParameters;
 use math::{apply, compose};
 use mouse::Mouse;
 use protocol::Participant;
-use state::Player;
 use visible_graph::GraphPt;
 
 use glium::glutin::{Event, ElementState, MouseButton};
