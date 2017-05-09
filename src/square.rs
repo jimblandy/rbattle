@@ -10,7 +10,7 @@ use visible_graph::{GraphPt, IndexedSegment, VisibleGraph};
 /// In graph space, the grid constructed by the call `SquareGrid::new(r, c)`
 /// extends from `(0,0)` to `(c, r)`. Node are numbered in row-major order,
 /// bottom to top, left to right.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SquareGrid {
     rows: usize,
     cols: usize
@@ -41,31 +41,11 @@ impl Graph for SquareGrid {
     fn nodes(&self) -> Node { self.rows * self.cols }
 
     fn edges(&self) -> Node {
-        // Each node has four outgoing edges,
-        // except for those along the edges.
-        4 * self.nodes() -
-            2 * self.rows -
-            2 * self.cols
+        unimplemented!();
     }
 
     fn neighbors(&self, node: Node) -> Vec<usize> {
-        let mut neighbors = Vec::new();
-
-        let (row, col) = self.node_rc(node);
-        if row + 1 < self.rows {
-            neighbors.push(self.rc_node(row + 1, col));
-        }
-        if col + 1 < self.cols {
-            neighbors.push(self.rc_node(row, col + 1));
-        }
-        if row >= 1 {
-            neighbors.push(self.rc_node(row - 1, col));
-        }
-        if col >= 1 {
-            neighbors.push(self.rc_node(row, col - 1));
-        }
-
-        neighbors
+        unimplemented!();
     }
 }
 
@@ -122,15 +102,14 @@ mod square_grid_as_graph {
 
 impl VisibleGraph for SquareGrid {
     fn bounds(&self) -> GraphPt {
-        GraphPt([self.cols as f32, self.rows as f32])
+        unimplemented!();
     }
 
     fn center(&self, node: Node) -> GraphPt {
-        let (row, col) = self.node_rc(node);
-        GraphPt([col as f32 + 0.5, row as f32 + 0.5])
+        unimplemented!();
     }
 
-    fn radius(&self) -> f32 { 0.5 }
+    fn radius(&self) -> f32 { unimplemented!(); }
 
     fn boundary(&self, node: Node) -> Vec<IndexedSegment> {
         let (rows, cols) = (self.rows, self.cols);
@@ -348,7 +327,6 @@ mod square_grid_as_visible_graph {
         // `boundary_hit` implements, and the value of TOLERANCE. But they
         // should mostly be okay with any reasonable hit definition.
 
-        use graph::Node;
         use super::SquareGrid;
 
         let grid = SquareGrid::new(3, 4);
