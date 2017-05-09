@@ -179,14 +179,16 @@ impl Server {
         // These variables get moved into the closure.
         let shared_handle = shared.clone();
         let scheduler_handle = scheduler.clone();
+        let sender_handle = sender.clone();
         thread::spawn(move || {
             for collected_actions in receiver {
                 let mut guard = shared_handle.lock().unwrap();
-                assert_eq!(guard.state.turn, collected_actions.turn);
+                assert_eq!(guard.state.turn + 1, collected_actions.turn);
 
                 for action in collected_actions.actions {
                     guard.state.take_action(&action);
                 }
+                guard.state.advance();
 
                 // We should have applied the same actions to the same state,
                 // and gotten the same checksum.
@@ -207,7 +209,7 @@ impl Server {
                 drop(guard);
 
                 let mut guard = scheduler_handle.lock().unwrap();
-                guard.submit_actions(actions, Box::new(sender.clone()));
+                guard.submit_actions(actions, Box::new(sender_handle.clone()));
             }
         });
 
@@ -220,6 +222,17 @@ impl Server {
                 Ok(SchedulerService { scheduler: scheduler_handle.clone() })
             });
         });
+
+        // Get the ball rolling by submitting an empty first move.
+        {
+            let mut guard = scheduler.lock().unwrap();
+            let actions = PlayerActions {
+                player,
+                turn: 0,
+                actions: vec![]
+            };
+            guard.submit_actions(actions, Box::new(sender));
+        }
 
         Server { player, shared, scheduler }
     }

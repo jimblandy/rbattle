@@ -93,6 +93,9 @@ impl State {
         State { map, turn: 0, nodes, rng: XorShift128Plus::new(SEED) }
     }
 
+    /// Return the number of players this map can accomodate.
+    pub fn max_players(&self) -> usize { self.map.player_colors.len() }
+
     /// Return a SerializableState that can be used to recreate this state.
     pub fn serializable(&self) -> SerializableState {
         SerializableState {

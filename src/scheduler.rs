@@ -14,18 +14,15 @@ pub struct Scheduler {
     // The number of the last turn we broadcast out.
     turn: usize,
 
-    // The number of players that have actually joined.
-    joined: usize,
-
     // A scheduler actually maintains its own copy of the game state, for
     // generating checksums to send to clients.
     state: State,
 
-    // A vector recording submitted actions and reply channels; the `i`'th
-    // element is for `Player(i)`. Once this has actions for every joined player,
-    // we apply all the actions to our state in a given order, compute the new
-    // state's checksum, and then transmit the collected moves to all the
-    // players.
+    // A vector recording submitted actions and reply channels for every joined
+    // player; the `i`'th element is for `Player(i)`. Once this has actions for
+    // every joined player, we apply all the actions to our state in a given
+    // order, compute the new state's checksum, and then transmit the collected
+    // moves to all the players.
     pending_actions: Vec<Option<(PlayerActions, Box<Notifier + Send>)>>
 }
 
@@ -37,23 +34,18 @@ pub trait Notifier {
 
 impl Scheduler {
     pub fn new(initial_state: State) -> Scheduler {
-        let num_players = initial_state.map.player_colors.len();
-        let mut pending_actions = Vec::new();
-        for _ in 0..num_players {
-            pending_actions.push(None)
-        }
-        Scheduler { turn: 0, joined: 0, state: initial_state, pending_actions }
+        Scheduler { turn: 0, state: initial_state, pending_actions: vec![] }
     }
 
     // Add another player to the game. If there is room, return the player's
     // number and a representation of the current game state. Return `None` if
     // there is no room for more players.
     pub fn player_join(&mut self) -> Option<(Player, SerializableState)> {
-        if self.joined >= self.pending_actions.len() {
+        if self.pending_actions.len() >= self.state.max_players() {
             None
         } else {
-            self.joined += 1;
-            Some((Player(self.joined - 1), self.state.serializable()))
+            self.pending_actions.push(None);
+            Some((Player(self.pending_actions.len() - 1), self.state.serializable()))
         }
     }
 
@@ -68,7 +60,7 @@ impl Scheduler {
         self.pending_actions[player] = Some((actions, reply_to));
 
         // Have all the players that have joined finally submitted an action?
-        if self.pending_actions.iter().take(self.joined).all(|o| o.is_some()) {
+        if self.pending_actions.iter().all(|o| o.is_some()) {
             // Grab the list of pending actions and reset it for the next turn.
             let pendings = replace(&mut self.pending_actions, vec![]);
 
@@ -85,7 +77,9 @@ impl Scheduler {
                     collected_actions.push(action);
                 }
                 collected_reply_tos.push(reply_to);
+                self.pending_actions.push(None);
             }
+            self.state.advance();
 
             let state_checksum = self.state.checksum();
 
