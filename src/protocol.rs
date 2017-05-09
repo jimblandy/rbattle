@@ -33,7 +33,20 @@
 //! Clients should apply received action lists as soon as they are received,
 //! advance their state, and send any collected actions immediately.
 
-use scheduler::{Notifier, Scheduler};
+use map::MapParameters;
+use jsonproto::JsonProto;
+use scheduler::{CollectedActions, Notifier, PlayerActions, Scheduler};
+use state::{SerializableState, State};
+
+use futures::{Future};
+use futures::future::ok;
+use futures::sync::oneshot;
+use tokio_proto::TcpServer;
+use tokio_service::Service;
+
+use std::io::{Error, ErrorKind};
+use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 struct SchedulerService {
@@ -41,12 +54,14 @@ struct SchedulerService {
 }
 
 /// Requests the server receives from clients.
+#[derive(Debug, Serialize, Deserialize)]
 enum Request {
     Join,
     Actions(PlayerActions),
 }
 
 /// The server's responses to those requests.
+#[derive(Debug, Serialize, Deserialize)]
 enum Response {
     Welcome { player: usize, state: SerializableState },
     GameFull,
@@ -60,7 +75,7 @@ struct OneshotNotifier {
 }
 
 impl Notifier for OneshotNotifier {
-    fn notify(&self, turn: CollectedActions) {
+    fn notify(self: Box<Self>, turn: CollectedActions) {
         self.sender.send(Response::Turn(turn))
             .expect("oneshot notifier receiver died");
     }
@@ -69,34 +84,40 @@ impl Notifier for OneshotNotifier {
 impl Service for SchedulerService {
     type Request = Request;
     type Response = Response;
-    type Error = io::Error;
+    type Error = Error;
     type Future = Box<Future<Item=Response, Error=Error>>;
 
     fn call(&self, req: Request) -> Self::Future {
         match req {
             Request::Join => {
-                let guard = self.scheduler.lock().unwrap();
+                let mut guard = self.scheduler.lock().unwrap();
                 match guard.player_join() {
                     Some((player, state)) =>
-                        ok(Response::Welcome { player, state }),
-                    None => ok(Response::GameFull)
+                        Box::new(ok(Response::Welcome { player, state })),
+                    None =>
+                        Box::new(ok(Response::GameFull))
                 }
             },
             Request::Actions(actions) => {
                 let (sender, receiver) = oneshot::channel();
                 let notifier = OneshotNotifier { sender };
-                let guard = self.scheduler.lock().unwrap();
+                let mut guard = self.scheduler.lock().unwrap();
                 guard.submit_actions(actions, Box::new(notifier));
+
+                // Turn oneshot errors into io::Error, as this service requires.
+                let receiver = receiver.map_err(|e| Error::new(ErrorKind::Other, e));
+
+                Box::new(receiver)
             }
         }
     }
 }
 
 pub fn start_server(addr: SocketAddr,
-                    parameters: GameParameters) {
-    let initial_state = State::new(parameters.clone());
-    let scheduler = Scheduler::new(initial_state);
-    let server = TcpServer::new(JsonProto::<Point, Point>::new(), addr);
+                    parameters: MapParameters) {
+    let initial_state = State::new(parameters);
+    let scheduler = Arc::new(Mutex::new(Scheduler::new(initial_state)));
 
-    server.serve(|| Ok(Echo::<Point>::default()));
+    let server = TcpServer::new(JsonProto::<Request, Response>::new(), addr);
+    server.serve(move || Ok(SchedulerService { scheduler: scheduler.clone() }));
 }

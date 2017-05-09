@@ -1,7 +1,7 @@
 //! Scheduling game play.
 
 use state::Player;
-use state::{Action, State};
+use state::{Action, State, SerializableState};
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -28,13 +28,13 @@ pub struct Scheduler {
     // we apply all the actions to our state in a given order, compute the new
     // state's checksum, and then transmit the collected moves to all the
     // players.
-    pending_actions: Vec<Option<(PlayerActions, Box<Notifier>)>>
+    pending_actions: Vec<Option<(PlayerActions, Box<Notifier + Send>)>>
 }
 
 /// Something that can notify a player of a turn's actions when they have been
 /// collected.
-trait Notifier {
-    fn notify(&self, turn: CollectedActions);
+pub trait Notifier {
+    fn notify(self: Box<Self>, turn: CollectedActions);
 }
 
 impl Scheduler {
@@ -55,7 +55,7 @@ impl Scheduler {
             None
         } else {
             self.joined += 1;
-            Some(self.joined - 1, self.state.serializable())
+            Some((self.joined - 1, self.state.serializable()))
         }
     }
 
@@ -63,7 +63,7 @@ impl Scheduler {
     // actions have been collected, send the full list to `reply_to`.
     pub fn submit_actions(&mut self,
                           actions: PlayerActions,
-                          reply_to: Box<Notifier>) {
+                          reply_to: Box<Notifier + Send>) {
         assert_eq!(actions.turn, self.turn);
         assert!(self.pending_actions[actions.player.0].is_none());
         let player = actions.player.0;
@@ -115,7 +115,7 @@ impl Scheduler {
 
 
 /// A set of actions submitted by a single player on a single turn.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PlayerActions {
     // The player submitting these actions.
     player: Player,
@@ -128,7 +128,7 @@ pub struct PlayerActions {
 }
 
 /// A collection of all actions submitted by all players.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CollectedActions {
     // The turn these moves produce when applied.
     turn: usize,

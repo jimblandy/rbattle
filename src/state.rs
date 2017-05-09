@@ -437,7 +437,7 @@ fn test_flow_from_unoccupied_cell() {
 }
 
 /// Actions that can be taken on a `State`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Action {
     /// The `player` has requested to toggle the outflow
     /// from `from` to `to`.
@@ -454,7 +454,7 @@ impl Hash for State {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SerializableState {
     map: Map,
     nodes: Vec<Option<Occupied>>,

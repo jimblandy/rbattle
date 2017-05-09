@@ -27,6 +27,7 @@ mod jsonproto;
 mod map;
 mod math;
 mod mouse;
+mod protocol;
 mod scheduler;
 mod square;
 mod synchronized_state;
