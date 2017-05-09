@@ -3,8 +3,6 @@
 use state::Player;
 use state::{Action, State};
 
-use std::sync::mpsc::Sender;
-
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::mem::replace;
@@ -30,7 +28,13 @@ pub struct Scheduler {
     // we apply all the actions to our state in a given order, compute the new
     // state's checksum, and then transmit the collected moves to all the
     // players.
-    pending_actions: Vec<Option<(PlayerActions, Sender<CollectedActions>)>>
+    pending_actions: Vec<Option<(PlayerActions, Box<Notifier>)>>
+}
+
+/// Something that can notify a player of a turn's actions when they have been
+/// collected.
+trait Notifier {
+    fn notify(&self, turn: CollectedActions);
 }
 
 impl Scheduler {
@@ -54,12 +58,11 @@ impl Scheduler {
         }
     }
 
-    // Submit `actions` to be carried out as soon as possible. Request
-    // that a collected list of all players' actions for the current turn
-    // be sent to `reply_to`.
+    // Submit `actions` to be carried out as soon as possible. When all players'
+    // actions have been collected, send the full list to `reply_to`.
     pub fn submit_actions(&mut self,
                           actions: PlayerActions,
-                          reply_to: Sender<CollectedActions>) {
+                          reply_to: Box<Notifier>) {
         assert_eq!(actions.turn, self.turn);
         assert!(self.pending_actions[actions.player.0].is_none());
         let player = actions.player.0;
@@ -101,8 +104,7 @@ impl Scheduler {
 
             // Broadcast out the new state of the world to all players.
             for reply_to in collected_reply_tos {
-                reply_to.send(collected.clone())
-                    .expect("sending collected moves failed");
+                reply_to.notify(collected.clone());
             }
         }
     }
