@@ -7,7 +7,7 @@ use square::SquareGrid;
 ///
 /// A `Map` holds everything that does not change over the course of an RBattle
 /// game. This includes a graph, and a set of nodes that have goop sources.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Map {
     /// The graph of nodes comprising this map's territory.
     pub graph: SquareGrid,

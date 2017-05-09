@@ -44,7 +44,7 @@ pub struct State {
 pub struct Player(pub usize);
 
 /// The state of a node that is occupied by some player.
-#[derive(Debug, Clone, Hash, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq)]
 pub struct Occupied {
     /// The player who controls this node.
     pub player: Player,
@@ -89,6 +89,22 @@ impl State {
 
         const SEED: [u64; 2] = [0xcd9d5eaaf04bc9a7, 0x4602cc7098d01ef9];
         State { map, nodes, rng: XorShift128Plus::new(SEED) }
+    }
+
+    /// Return a SerializableState that can be used to recreate this state.
+    pub fn serializable(&self) -> SerializableState {
+        SerializableState {
+            map: (*self.map).clone(),
+            nodes: self.nodes.clone(),
+            rng: self.rng.clone()
+        }
+    }
+
+    /// Reconstitute a State from a SerializableState. This will not share the
+    /// map with the original, but that's just a space optimization; the map is
+    /// immutable anyway.
+    pub fn from_serializable(ser: SerializableState) -> State {
+        State { map: Arc::new(ser.map), nodes: ser.nodes, rng: ser.rng }
     }
 
     /// Let one unit of goop flow through each outflow.
@@ -453,4 +469,10 @@ impl Hash for State {
         self.nodes.hash(state);
         self.rng.hash(state);
     }
+}
+
+pub struct SerializableState {
+    map: Map,
+    nodes: Vec<Option<Occupied>>,
+    rng: XorShift128Plus
 }
