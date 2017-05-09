@@ -533,8 +533,11 @@ impl MouseDrawer {
             Display::Outflow { nodes: (from, to), state: outflow_state } => {
                 // Prepare the vertices.
                 let graph = &state.map.graph;
-                let outflow = [GraphVertex { point: graph.center(from).0 },
-                               GraphVertex { point: graph.center(to).0 }];
+                let GraphPt(start) = graph.center(from);
+                let GraphPt(end) = graph.center(to);
+                let mid = midpoint(start, end);
+                let outflow = [GraphVertex { point: start },
+                               GraphVertex { point: mid }];
                 self.outflow.borrow_mut().write(&outflow);
 
                 match outflow_state {
