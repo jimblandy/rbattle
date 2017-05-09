@@ -18,6 +18,7 @@ mod map;
 mod math;
 mod mouse;
 mod square;
+mod synchronized_state;
 mod state;
 mod visible_graph;
 
@@ -25,6 +26,7 @@ use drawer::Drawer;
 use math::{apply, compose};
 use mouse::Mouse;
 use state::{GameParameters, Player, State};
+use synchronized_state::SynchronizedState;
 use visible_graph::GraphPt;
 
 use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
@@ -67,14 +69,14 @@ fn run() -> Result<()> {
         .build_glium()
         .chain_err(|| "unable to open window")?;
 
-    let mut state = State::new(GameParameters {
+    let mut syn_state = SynchronizedState::new_server(GameParameters {
         board: (15, 15),
-        sources: vec![32, 192],
+        sources: vec![32, 42, 182, 192],
         colors: vec![(0x9f, 0x20, 0xb1), (0xb1, 0x20, 0x44),
                      (0x20, 0xb1, 0x21), (0x20, 0x67, 0xb1),
                      (0xe0, 0x6f, 0x3a)]
     });
-    let map = state.map.clone();
+    let map = syn_state.snapshot().map.clone();
 
     let drawer = Drawer::new(&display, &map)
         .chain_err(|| "failed to construct Drawer for map")?;
@@ -88,6 +90,10 @@ fn run() -> Result<()> {
     let mut free_running = false;
 
     loop {
+        // Take a snapshot of the current state and operate on that, to avoid
+        // holding the SynchronizedState's lock for very long.
+        let state = syn_state.snapshot();
+
         // It seems like glium always makes a frame take a full 16ms, regardless
         // of how much work we ask it to do, but I don't see anything in the
         // documentation about this. We're leaning on that for now to keep
@@ -124,7 +130,7 @@ fn run() -> Result<()> {
                 }
                 Event::MouseInput(ElementState::Released, MouseButton::Left) => {
                     if let Some(action) = mouse.release() {
-                        state.take_action(action);
+                        syn_state.request_action(action);
                     }
                 }
                 _ => ()
@@ -135,7 +141,7 @@ fn run() -> Result<()> {
             println!("Turn {} at {:9.3}s:", turn, elapsed_since(&start));
 
             let start_generation = Instant::now();
-            state.advance();
+            syn_state.advance();
             println!("    advance to next state: {:9.6}s:", elapsed_since(&start_generation));
             turn += 1;
         }

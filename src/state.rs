@@ -18,7 +18,7 @@
 use graph::Node;
 use map::Map;
 use square::SquareGrid;
-use std::rc::Rc;
+use std::sync::Arc;
 use rand::{Rng, SeedableRng, XorShiftRng};
 
 use std::iter::repeat;
@@ -27,7 +27,7 @@ use std::iter::repeat;
 #[derive(Clone)]
 pub struct State {
     /// The map being played on.
-    pub map: Rc<Map>,
+    pub map: Arc<Map>,
 
     /// Which nodes are occupied, and which are vacant. Indexed by node id.
     pub nodes: Vec<Option<Occupied>>,
@@ -73,7 +73,7 @@ fn index_mut_pair<T>(slice: &mut [T], i: usize, j: usize) -> (&mut T, &mut T) {
 impl State {
     pub fn new(params: GameParameters) -> State {
         let graph = SquareGrid::new(params.board.0, params.board.1);
-        let map = Rc::new(Map::new(graph, params.sources, params.colors));
+        let map = Arc::new(Map::new(graph, params.sources, params.colors));
 
         const SEED: [u32; 4] = [0xcd9d5eaa, 0xf04bc9a7, 0x4602cc70, 0x98d01ef9];
         let mut nodes: Vec<Option<Occupied>> = repeat(None).take(map.graph.nodes()).collect();

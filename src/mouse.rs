@@ -9,7 +9,7 @@ use map::Map;
 use state::{Action, Player, State};
 use visible_graph::GraphPt;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 /// The game's state for handling mouse activity.
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct Mouse {
     player: Player,
 
     /// The map we're controlling.
-    map: Rc<Map>,
+    map: Arc<Map>,
 
     /// Where we last saw the mouse. Rather than representing this as a point on
     /// the plane, we keep it in dathe form relevant to our purposes, broken
@@ -45,7 +45,7 @@ enum Affordance {
 }
 
 impl Mouse {
-    pub fn new(player: Player, map: Rc<Map>) -> Mouse {
+    pub fn new(player: Player, map: Arc<Map>) -> Mouse {
         Mouse { player, map, position: Affordance::Nothing, click: None }
     }
 
