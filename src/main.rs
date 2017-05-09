@@ -6,6 +6,7 @@
 #[macro_use] extern crate error_chain;
 #[macro_use] extern crate glium;
 extern crate rand;
+extern crate futures;
 
 #[cfg(test)]
 #[macro_use]
@@ -17,6 +18,7 @@ mod graph;
 mod map;
 mod math;
 mod mouse;
+mod scheduler;
 mod square;
 mod synchronized_state;
 mod state;

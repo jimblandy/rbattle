@@ -379,7 +379,7 @@ fn test_flow_from_unoccupied_cell() {
 }
 
 /// Actions that can be taken on a `State`.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Action {
     /// The `player` has requested to toggle the outflow
     /// from `from` to `to`.
