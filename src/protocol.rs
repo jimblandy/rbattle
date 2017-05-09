@@ -144,6 +144,34 @@ struct Shared {
     pending: Vec<Action>
 }
 
+impl Shared {
+    fn apply_collected_actions(&mut self,
+                               collected_actions: CollectedActions)
+                               -> PlayerActions
+    {
+        assert_eq!(self.state.turn + 1, collected_actions.turn);
+
+        for action in collected_actions.actions {
+            self.state.take_action(&action);
+        }
+        self.state.advance();
+
+        // We should have applied the same actions to the same state,
+        // and gotten the same checksum.
+        assert_eq!(self.state.checksum(),
+                   collected_actions.state_checksum);
+
+        // Now that we've applied the actions from the prior turn, return
+        // whatever actions have been queued up in the mean time as our next
+        // turn.
+        PlayerActions {
+            player: self.player,
+            turn: self.state.turn,
+            actions: replace(&mut self.pending, vec![])
+        }
+    }
+}
+
 pub struct Server {
     /// The player on the local machine.
     player: Player,
@@ -183,33 +211,14 @@ impl Server {
         thread::spawn(move || {
             for collected_actions in receiver {
                 let mut guard = shared_handle.lock().unwrap();
-                assert_eq!(guard.state.turn + 1, collected_actions.turn);
+                let next_actions = guard.apply_collected_actions(collected_actions);
 
-                for action in collected_actions.actions {
-                    guard.state.take_action(&action);
-                }
-                guard.state.advance();
-
-                // We should have applied the same actions to the same state,
-                // and gotten the same checksum.
-                assert_eq!(guard.state.checksum(),
-                           collected_actions.state_checksum);
-
-                // Now that we've applied the actions from the prior turn,
-                // submit whatever actions have been queued up in the mean time
-                // as our next turn.
-                let actions = PlayerActions {
-                    player: guard.player,
-                    turn: guard.state.turn,
-                    actions: replace(&mut guard.pending, vec![])
-                };
-
-                // But drop the guard on the shared data first, to avoid
-                // having to think about lock ordering.
+                // Drop the guard on the shared data first, to avoid having to
+                // think about lock ordering.
                 drop(guard);
 
                 let mut guard = scheduler_handle.lock().unwrap();
-                guard.submit_actions(actions, Box::new(sender_handle.clone()));
+                guard.submit_actions(next_actions, Box::new(sender_handle.clone()));
             }
         });
 
