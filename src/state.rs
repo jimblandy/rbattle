@@ -344,11 +344,11 @@ fn test_friendly_flow_empties_cell() {
 fn test_friendly_flow_max_goop() {
     // Florin can't pump any more goop into its friendly neighbor Pfennig,
     // which has the maximum amount already.
-    let mut florin  = Some(Occupied { player: Player(1), outflows: vec![2, 3], goop: 3 });
+    let mut florin  = Some(Occupied { player: Player(1), outflows: vec![2], goop: 3 });
     let mut pfennig = Some(Occupied { player: Player(1), outflows: vec![4], goop: MAX_GOOP });
 
     assert_eq!(simulate_flow(&mut florin, &mut pfennig), false);
-    assert_eq!(florin, Some(Occupied { player: Player(1), outflows: vec![2, 3], goop: 3 }));
+    assert_eq!(florin, Some(Occupied { player: Player(1), outflows: vec![2], goop: 3 }));
     assert_eq!(pfennig, Some(Occupied { player: Player(1), outflows: vec![4], goop: MAX_GOOP }));
 }
 
