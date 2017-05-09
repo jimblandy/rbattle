@@ -20,6 +20,7 @@ use map::Map;
 use square::SquareGrid;
 use std::sync::Arc;
 use rand::{Rng, SeedableRng, XorShiftRng};
+use xorshift::XorShift128Plus;
 
 use std::iter::repeat;
 
@@ -33,7 +34,7 @@ pub struct State {
     pub nodes: Vec<Option<Occupied>>,
 
     /// The random number generator used to drive the goop flow algorithm.
-    rng: XorShiftRng,
+    rng: XorShift128Plus
 }
 
 /// A player id number.
@@ -75,7 +76,6 @@ impl State {
         let graph = SquareGrid::new(params.board.0, params.board.1);
         let map = Arc::new(Map::new(graph, params.sources, params.colors));
 
-        const SEED: [u32; 4] = [0xcd9d5eaa, 0xf04bc9a7, 0x4602cc70, 0x98d01ef9];
         let mut nodes: Vec<Option<Occupied>> = repeat(None).take(map.graph.nodes()).collect();
         // Ensure that each source is occupied by its player.
         for (player, &source) in map.sources.iter().enumerate() {
@@ -85,7 +85,9 @@ impl State {
                 goop: 0
             });
         }
-        State { map, nodes, rng: XorShiftRng::from_seed(SEED) }
+
+        const SEED: [u64; 2] = [0xcd9d5eaaf04bc9a7, 0x4602cc7098d01ef9];
+        State { map, nodes, rng: XorShift128Plus::new(SEED) }
     }
 
     /// Let one unit of goop flow through each outflow.
