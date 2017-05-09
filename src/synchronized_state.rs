@@ -53,7 +53,7 @@ impl SynchronizedState {
 
     /// Submit `action` to be performed as soon as possible.
     pub fn request_action(&mut self, action: Action) {
-        self.state.take_action(action);
+        self.state.take_action(&action);
     }
 
     pub fn advance(&mut self) {

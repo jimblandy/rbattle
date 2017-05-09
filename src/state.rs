@@ -143,10 +143,10 @@ impl State {
     }
 
     /// Apply `action` to this state.
-    pub fn take_action(&mut self, action: Action) {
+    pub fn take_action(&mut self, action: &Action) {
         println!("take_action({:?})", action);
         match action {
-            Action::ToggleOutflow { player, from, to } => {
+            &Action::ToggleOutflow { player, from, to } => {
                 match &mut self.nodes[from] {
                     // This node is empty. Don't change it.
                     &mut None => (),
