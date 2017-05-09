@@ -224,9 +224,11 @@ fn simulate_flow(from_node: &mut Option<Occupied>, to_node: &mut Option<Occupied
 
         // Goop flowing into an occupied node, succeeds in clearing it.
         (&mut Some(Occupied { player, goop: ref mut from_goop, .. }),
-         &mut ref mut to) => {
+         &mut Some(ref mut target)) => {
             *from_goop -= 1;
-            *to = Some(Occupied { player, outflows: vec![], goop: 0 });
+            target.player = player;
+            target.outflows.clear();
+            target.goop = 1 - target.goop;
             true
         }
     }
@@ -348,6 +350,20 @@ fn test_friendly_flow_max_goop() {
     assert_eq!(simulate_flow(&mut florin, &mut pfennig), false);
     assert_eq!(florin, Some(Occupied { player: Player(1), outflows: vec![2, 3], goop: 3 }));
     assert_eq!(pfennig, Some(Occupied { player: Player(1), outflows: vec![4], goop: MAX_GOOP }));
+}
+
+#[test]
+fn test_attack_empty_cell() {
+    // Florin siezes the opportunity to invade Guilder, which is left unguarded.
+    let mut florin  = Some(Occupied { player: Player(1), outflows: vec![2], goop: 3 });
+    let mut guilder = Some(Occupied { player: Player(2), outflows: vec![1], goop: 0 });
+
+    // This is an attack!
+    assert_eq!(simulate_flow(&mut florin, &mut guilder), true);
+    // Afterwards, player 1 controls Guilder. Note that Guilder's `.outflows`
+    // field is cleared, since a new boss is in town.
+    assert_eq!(florin, Some(Occupied { player: Player(1), outflows: vec![2], goop: 2 }));
+    assert_eq!(guilder, Some(Occupied { player: Player(1), outflows: vec![], goop: 1 }));
 }
 
 #[test]
