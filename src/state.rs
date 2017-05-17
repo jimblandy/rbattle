@@ -59,7 +59,7 @@ pub struct Occupied {
     pub goop: usize,
 }
 
-pub const MAX_GOOP: usize = 15;
+pub const MAX_GOOP: usize = 120;
 
 /// Return a pair of mutable references to the `i`'th and `j`'th elements of
 /// `slice`, where `i != j`.
