@@ -44,6 +44,7 @@ use glium::Surface;
 
 use std::io::Write;
 use std::net::SocketAddr;
+use std::time::Instant;
 
 // This only gives access within this module. Make this `pub use errors::*;`
 // instead if the types must be accessible from other modules (e.g., within
@@ -114,7 +115,11 @@ fn run() -> Result<()> {
 
     let mut mouse = Mouse::new(participant.get_player(), map.clone());
 
+    let start = Instant::now();
     loop {
+        // Record when this frame started.
+        let time = start.elapsed();
+
         // Take a snapshot of the current state and operate on that.
         let state = participant.snapshot();
 
@@ -125,7 +130,7 @@ fn run() -> Result<()> {
         // explicitly to avoid depending on this behavior.
         let mut frame = display.draw();
         frame.clear_color(1.0, 1.0, 1.0, 1.0);
-        let status = drawer.draw(&mut frame, &state, &mouse);
+        let status = drawer.draw(&mut frame, time, &state, &mouse);
         frame.finish()
             .chain_err(|| "drawing finish failed")?;
 

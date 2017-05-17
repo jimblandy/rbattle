@@ -42,6 +42,7 @@ use glium::backend::Facade;
 use glium::index::{NoIndices, PrimitiveType};
 
 use std::cell::RefCell;
+use std::time::Duration;
 
 /// A `Drawer` knows how to draw a `State` on a Glium `Frame`.
 ///
@@ -84,6 +85,7 @@ impl Drawer {
     /// coordinates, for use by the controller.
     pub fn draw(&self,
                 frame: &mut Frame,
+                time: Duration,
                 state: &State,
                 mouse: &Mouse) -> Result<[[f32; 3]; 3]>
     {
@@ -109,7 +111,7 @@ impl Drawer {
         let graph_to_device = compose(game_to_device, map.graph_to_game);
 
         self.map.draw(frame, &graph_to_device, &state.map)?;
-        self.goop.draw(frame, &graph_to_device, &state.nodes, &state.map)?;
+        self.goop.draw(frame, &graph_to_device, time, &state.nodes, &state.map)?;
         self.outflows.draw(frame, &graph_to_device, &state.nodes, &state.map)?;
         self.mouse.draw(frame, &graph_to_device, state, mouse)?;
 
@@ -447,8 +449,12 @@ impl GoopDrawer {
                         indices, draw_params })
     }
 
-    fn draw(&self, frame: &mut Frame, to_device: &[[f32; 3]; 3], nodes: &[Option<Occupied>], map: &Map)
-            -> Result<()>
+    fn draw(&self,
+            frame: &mut Frame,
+            to_device: &[[f32; 3]; 3],
+            time: Duration,
+            nodes: &[Option<Occupied>],
+            map: &Map) -> Result<()>
     {
         assert_eq!(nodes.len(), map.graph.nodes());
 
@@ -476,13 +482,17 @@ impl GoopDrawer {
         }
         assert_eq!(textures.len(), textures.capacity());
 
+        let time_as_float =
+            time.as_secs() as f32 + time.subsec_nanos() as f32 / 1e9;
+
         self.textures.borrow_mut().write(&textures);
         frame.draw((&self.squares, &*self.textures.borrow()),
                    &self.indices,
                    &self.program,
                    &uniform! {
                        graph_to_device: *to_device,
-                       circle_spacing: (MAX_GOOP as f32)
+                       circle_spacing: (MAX_GOOP as f32),
+                       time: time_as_float
                    },
                    &self.draw_params)
             .chain_err(|| "drawing goop")?;

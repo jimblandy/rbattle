@@ -35,6 +35,7 @@ out vec4 color;
 in vec2 fragment_uv;
 
 uniform float circle_spacing;
+uniform float time;
 
 void main() {
   // The portion of the plane off to the left of the y axis we leave alone.
@@ -48,8 +49,14 @@ void main() {
   vec2 frag_circle = fragment_uv;
   frag_circle.x -= circle_index * circle_spacing;
 
+  // Find the angle of fragment_uv relative to the circle's center.
+  float angle = atan(frag_circle.y, frag_circle.x);
+
+  // Perturb the radius of the goop circle by the angle.
+  float radius = 1 + 0.1 * sin(time * 2) * sin(angle * 6);
+
   // Pixels outside the circle we leave alone.
-  if (length(frag_circle) > 1)
+  if (length(frag_circle) > radius)
     discard;
 
   // The circle index is between 0 and 4095. Treat it as a twelve-bit number,
