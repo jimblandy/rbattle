@@ -47,7 +47,7 @@ pub struct State {
 pub struct Player(pub usize);
 
 /// The state of a node that is occupied by some player.
-#[derive(Clone, Debug, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Occupied {
     /// The player who controls this node.
     pub player: Player,
@@ -474,6 +474,17 @@ impl Hash for State {
     {
         self.nodes.hash(state);
         self.rng.hash(state);
+    }
+}
+
+impl Hash for Occupied {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.player.hash(state);
+        for outflow in &self.outflows {
+            // Avoid hashing a value whose size is platform-dependent.
+            (*outflow as u32).hash(state);
+        }
+        self.goop.hash(state);
     }
 }
 
