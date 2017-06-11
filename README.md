@@ -28,6 +28,12 @@ RBattle was written in haste. There are many, many improvements possible, and
 the code is not great in some parts. There are surely plenty of bugs as well.
 Pull requests are welcome!
 
+# To do
+
+- Mark goop sources.
+- Animate flow
+- Animate combat
+
 # License
 
 RBattle is copyright 2017, the RBattle developers. RBattle is distributed under
