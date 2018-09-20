@@ -9,6 +9,7 @@ extern crate futures;
 extern crate rand;
 extern crate serde;
 extern crate serde_json;
+extern crate tokio_codec;
 extern crate tokio_core;
 extern crate tokio_io;
 extern crate tokio_proto;
@@ -39,8 +40,11 @@ use mouse::Mouse;
 use protocol::Participant;
 use visible_graph::GraphPt;
 
-use glium::glutin::{Event, ElementState, MouseButton, VirtualKeyCode};
-use glium::Surface;
+use glium::{Display, Surface};
+use glium::glutin::{ContextBuilder, ElementState, Event, EventsLoop, KeyboardInput,
+                    ModifiersState, MouseButton, VirtualKeyCode, WindowBuilder,
+                    WindowEvent};
+use glium::glutin::dpi::PhysicalPosition;
 
 use std::io::Write;
 use std::net::SocketAddr;
@@ -103,11 +107,11 @@ fn run() -> Result<()> {
 
     let map = participant.snapshot().map.clone();
 
-    use glium::DisplayBuild;
-
-    let display = glium::glutin::WindowBuilder::new()
-        .with_title("rbattle".to_string())
-        .build_glium()
+    let mut events_loop = EventsLoop::new();
+    let window = WindowBuilder::new()
+        .with_title("rbattle".to_string());
+    let context = ContextBuilder::new();
+    let display = Display::new(window, context, &events_loop)
         .chain_err(|| "unable to open window")?;
 
     let drawer = Drawer::new(&display, &map)
@@ -137,32 +141,69 @@ fn run() -> Result<()> {
         let window_to_game = status?;
         let window_to_graph = compose(map.game_to_graph, window_to_game);
 
-        for event in display.poll_events() {
-            match event {
-                Event::Closed => return Ok(()),
-                Event::MouseMoved(x, y) => {
-                    let graph_pos = apply(window_to_graph, [x as f32, y as f32]);
-                    mouse.move_to(GraphPt(graph_pos));
-                }
-                Event::MouseInput(ElementState::Pressed, MouseButton::Left) => {
-                    mouse.click();
-                }
-                Event::MouseInput(ElementState::Released, MouseButton::Left) => {
-                    if let Some(action) = mouse.release() {
-                        participant.request_action(action);
+        let mut done = None;
+        events_loop.poll_events(|event| {
+            if let Event::WindowEvent { event, .. } = event {
+                match event {
+                    WindowEvent::CloseRequested => {
+                        done = Some(Ok(()));
                     }
-                }
 
-                Event::KeyboardInput(ElementState::Pressed, _,
-                                     Some(VirtualKeyCode::Escape)) => {
-                    std::process::exit(0);
+                    WindowEvent::CursorMoved { position, .. } => {
+                        let hidpi_factor = display.gl_window().get_hidpi_factor();
+                        let PhysicalPosition { x, y } = position.to_physical(hidpi_factor);
+                        let graph_pos = apply(window_to_graph, [x as f32, y as f32]);
+                        mouse.move_to(GraphPt(graph_pos));
+                    }
+
+                    WindowEvent::MouseInput {
+                        button: MouseButton::Left,
+                        state: ElementState::Pressed,
+                        ..
+                    } => {
+                        mouse.click();
+                    }
+
+                    WindowEvent::MouseInput {
+                        button: MouseButton::Left,
+                        state: ElementState::Released,
+                        ..
+                    } => {
+                        if let Some(action) = mouse.release() {
+                            participant.request_action(action);
+                        }
+                    }
+
+                    WindowEvent::KeyboardInput {
+                        input: KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Escape),
+                            ..
+                        },
+                        ..
+                    } => {
+                        std::process::exit(0);
+                    }
+
+                    WindowEvent::KeyboardInput {
+                        input: KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::W),
+                            modifiers: ModifiersState { ctrl: true, .. },
+                            ..
+                        },
+                        ..
+                    } => {
+                        std::process::exit(0);
+                    }
+
+                    _ => ()
                 }
-                Event::KeyboardInput(ElementState::Pressed, _,
-                                     Some(VirtualKeyCode::W)) => {
-                    std::process::exit(0);
-                }
-                _ => ()
             }
+        });
+
+        if let Some(result) = done {
+            return result;
         }
     }
 }

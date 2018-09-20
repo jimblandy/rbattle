@@ -5,8 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 use serde_json;
 use tokio_core::net::TcpStream;
-use tokio_io::AsyncRead;
-use tokio_io::codec::{Decoder, Encoder, Framed};
+use tokio_codec::{Decoder, Encoder, Framed};
 use tokio_proto::pipeline::ServerProto;
 
 use std::io::{Error, ErrorKind};
@@ -84,6 +83,6 @@ impl<In, Out> ServerProto<TcpStream> for JsonProto<In, Out>
     type BindTransport = Result<Self::Transport, Error>;
     fn bind_transport(&self, io: TcpStream) -> Self::BindTransport {
         io.set_nodelay(true)?;
-        Ok(io.framed(JsonCodec::default()))
+        Ok(JsonCodec::default().framed(io))
     }
 }

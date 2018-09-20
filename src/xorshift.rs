@@ -1,6 +1,6 @@
 //! The xorshift128+ random number generator. Fast, and very random.
 
-use rand::Rng;
+use rand::{Error, RngCore};
 
 /// A stream of pseudo-random numbers generated using the xorshift+ technique
 /// described here:
@@ -37,7 +37,7 @@ impl XorShift128Plus {
     }
 }
 
-impl Rng for XorShift128Plus {
+impl RngCore for XorShift128Plus {
     fn next_u64(&mut self) -> u64 {
         let mut s1 = self.state[0];
         let s0 = self.state[1];
@@ -49,6 +49,14 @@ impl Rng for XorShift128Plus {
 
     fn next_u32(&mut self) -> u32 {
         (self.next_u64() & 0xffff_ffff) as u32
+    }
+
+    fn fill_bytes(&mut self, _dest: &mut [u8]) {
+        unimplemented!("fill_bytes");
+    }
+
+    fn try_fill_bytes(&mut self, _dest: &mut [u8]) -> Result<(), Error> {
+        unimplemented!("try_fill_bytes");
     }
 }
 

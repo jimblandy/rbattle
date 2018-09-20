@@ -491,7 +491,7 @@ impl GoopDrawer {
                    &self.program,
                    &uniform! {
                        graph_to_device: *to_device,
-                       circle_spacing: (MAX_GOOP as f32),
+                       circle_spacing: MAX_GOOP as f32,
                        time: time_as_float
                    },
                    &self.draw_params)
