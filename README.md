@@ -1,5 +1,9 @@
 # RBattle
 
+**This repo is archived.** This depends on crates with security
+vulnerabilities, and I don't have time to update them at the moment.
+It also is so old that it doesn't run any more.
+
 RBattle is a resurrection of the '90s-era X Windows game XBattle, written in Rust.
 It uses the Glium OpenGL bindings for graphics, and Tokio for some of its networking.
 
